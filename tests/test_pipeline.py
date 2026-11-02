@@ -26,8 +26,13 @@ def test_select_model_enforces_speed_requirement() -> None:
     scores = {"gru": fast, "node": accurate_slow}
     assert select_model(scores) == "node"
     assert select_model(scores, {"gru": 300.0, "node": 20.0}, 100.0) == "gru"
-    # If no candidate is fast enough, fall back to accuracy alone.
+    # If no candidate is fast enough, fall back to all candidates ...
     assert select_model(scores, {"gru": 50.0, "node": 20.0}, 100.0) == "node"
+    # ... and among equally accurate ones (Gamma within 0.01) take the fastest.
+    tie = {"gru": {"gamma_mean": 0.948, "rmse_mv_median": 1.65},
+           "node": {"gamma_mean": 0.949, "rmse_mv_median": 1.56}}
+    assert select_model(tie, {"gru": 98.0, "node": 16.0}, 100.0) == "gru"
+    assert select_model(tie) == "node"  # no speed information: lower RMSE
 
 
 def test_end_to_end_tiny(tmp_path: Path) -> None:
@@ -48,6 +53,12 @@ def test_end_to_end_tiny(tmp_path: Path) -> None:
 
     twin = load_twin(tmp_path / "twin")
     assert len(twin.members) == cfg.ensemble.members
+    # Trained models are cached and reused by an identical second run.
+    cached = sorted((tmp_path / "models").glob("*.pt"))
+    assert len(cached) == 1 + cfg.ensemble.members
+    logs: list[str] = []
+    run(cfg, tmp_path, log=logs.append, make_figures=False)
+    assert sum("loaded cached" in line for line in logs) == len(cached)
     theta = np.array([[120.0, 36.0, 0.3, 1.0]])
     mean, _std, _ = twin.predict(theta, np.zeros((1, cfg.sim.n_steps)))
     assert mean.shape == (1, cfg.sim.n_steps) and np.all(np.isfinite(mean))

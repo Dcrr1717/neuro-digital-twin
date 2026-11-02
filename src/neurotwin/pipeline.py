@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import multiprocessing
 import platform
@@ -72,58 +73,110 @@ def _train_job(job: TrainJob) -> tuple[dict[str, object], dict[str, Any], TrainR
         val_loss=res.val_loss, best_epoch=res.best_epoch, seconds=res.seconds)
 
 
+def _model_cache_path(cache: Path, kind: str, seed: int, cfg: Config) -> Path:
+    """Checkpoint path keyed by everything that determines the trained model."""
+    arch = cfg.gru if kind == "gru" else cfg.node
+    key = repr((kind, seed, arch, cfg.seed, cfg.sim, cfg.params, cfg.stimulus,
+                cfg.data.n_train, cfg.data.n_val))
+    return cache / f"{kind}-seed{seed}-{hashlib.sha1(key.encode()).hexdigest()[:10]}.pt"
+
+
+def _save_result(path: Path, res: TrainResult) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    torch.save({"kind": res.model.kind, "config": res.model.config_dict(),
+                "state_dict": res.model.state_dict(), "train_loss": res.train_loss,
+                "val_loss": res.val_loss, "best_epoch": res.best_epoch,
+                "seconds": res.seconds}, path)
+
+
+def _load_result(path: Path) -> TrainResult:
+    ckpt = torch.load(path, map_location="cpu", weights_only=True)
+    model = build_model(ckpt["kind"], ckpt["config"])
+    model.load_state_dict(ckpt["state_dict"])
+    model.eval()
+    return TrainResult(model=model, train_loss=list(ckpt["train_loss"]),
+                       val_loss=list(ckpt["val_loss"]), best_epoch=int(ckpt["best_epoch"]),
+                       seconds=float(ckpt["seconds"]))
+
+
 def train_many(
     jobs: list[tuple[str, int]],
     data: dict[str, Dataset],
     norm: Normalizer,
     cfg: Config,
     log: Callable[[str], None],
+    cache: Path | None = None,
 ) -> list[TrainResult]:
     """Train ``(kind, seed)`` jobs, in ``cfg.parallel_jobs`` processes if > 1.
 
     Small recurrent networks use several cores poorly, so independent models
     (candidates, ensemble members) train faster side by side with one or two
-    threads each than one after another with all threads.
+    threads each than one after another with all threads. Trained models are
+    cached in ``cache`` (if given) and reused by later runs of the same config.
     """
-    n_proc = min(cfg.parallel_jobs, len(jobs))
+    results: dict[int, TrainResult] = {}
+    todo: list[int] = []
+    for i, (kind, seed) in enumerate(jobs):
+        path = _model_cache_path(cache, kind, seed, cfg) if cache else None
+        if path is not None and path.exists():
+            results[i] = _load_result(path)
+            log(f"  loaded cached {KIND_NAME[kind]} (seed {seed}) from {path}")
+        else:
+            todo.append(i)
+    n_proc = min(cfg.parallel_jobs, len(todo))
     if n_proc <= 1:
-        return [_train(kind, data, norm, cfg, seed, log) for kind, seed in jobs]
-    total = cfg.torch_threads or torch.get_num_threads()
-    threads = max(1, total // n_proc)
-    sub = {"train": data["train"], "val": data["val"]}
-    log(f"  training {len(jobs)} models in {n_proc} processes x {threads} threads")
-    ctx = multiprocessing.get_context("spawn")
-    with ProcessPoolExecutor(max_workers=n_proc, mp_context=ctx) as pool:
-        outs = list(pool.map(_train_job, [(k, sub, norm, cfg, s, threads) for k, s in jobs]))
-    results = []
-    for _, state, res in outs:
-        res.model.load_state_dict({k: torch.from_numpy(v) for k, v in state.items()})
-        res.model.eval()
-        results.append(res)
-    return results
+        for i in todo:
+            kind, seed = jobs[i]
+            results[i] = _train(kind, data, norm, cfg, seed, log)
+    else:
+        total = cfg.torch_threads or torch.get_num_threads()
+        threads = max(1, total // n_proc)
+        sub = {"train": data["train"], "val": data["val"]}
+        log(f"  training {len(todo)} models in {n_proc} processes x {threads} threads")
+        ctx = multiprocessing.get_context("spawn")
+        args = [(jobs[i][0], sub, norm, cfg, jobs[i][1], threads) for i in todo]
+        with ProcessPoolExecutor(max_workers=n_proc, mp_context=ctx) as pool:
+            outs = list(pool.map(_train_job, args))
+        for i, (_, state, res) in zip(todo, outs, strict=True):
+            res.model.load_state_dict({k: torch.from_numpy(v) for k, v in state.items()})
+            res.model.eval()
+            results[i] = res
+    if cache is not None:
+        for i in todo:
+            _save_result(_model_cache_path(cache, *jobs[i], cfg), results[i])
+    return [results[i] for i in range(len(jobs))]
+
+
+GAMMA_TIE = 0.01
+SELECTION_RULE = (
+    "candidates meeting the speed-up requirement (all, if none does) whose validation "
+    "mean Gamma is within {tie} of the best are equally accurate; among them the "
+    "fastest is chosen"
+)
 
 
 def select_model(
     scores: dict[str, dict[str, float]],
     speedups: dict[str, float] | None = None,
     min_speedup: float = 0.0,
+    tie: float = GAMMA_TIE,
 ) -> str:
     """Pick the architecture for the twin.
 
-    Rule: among candidates whose batched inference is at least ``min_speedup``
-    times faster than the reference solver (all candidates if none is), take
-    the best validation spike timing (mean Gamma), breaking near-ties (< 0.01)
-    by the lower median voltage RMSE.
+    1. Keep the candidates whose batched inference is at least ``min_speedup``
+       times faster than the reference solver (all candidates if none is).
+    2. Treat candidates whose validation mean Gamma is within ``tie`` of the
+       best as equally accurate.
+    3. Among those, take the fastest (the twin exists to be fast); without
+       speed information, take the lowest median voltage RMSE.
     """
     eligible = [k for k in scores if speedups is None or speedups[k] >= min_speedup]
     eligible = eligible or list(scores)
-    kinds = sorted(eligible, key=lambda k: -scores[k]["gamma_mean"])
-    best = kinds[0]
-    for k in kinds[1:]:
-        close = abs(scores[k]["gamma_mean"] - scores[best]["gamma_mean"]) < 0.01
-        if close and scores[k]["rmse_mv_median"] < scores[best]["rmse_mv_median"]:
-            best = k
-    return best
+    best_gamma = max(scores[k]["gamma_mean"] for k in eligible)
+    tied = [k for k in eligible if best_gamma - scores[k]["gamma_mean"] < tie]
+    if speedups is not None:
+        return max(tied, key=lambda k: speedups[k])
+    return min(tied, key=lambda k: scores[k]["rmse_mv_median"])
 
 
 def save_twin(path: Path, members: list[Surrogate], norm: Normalizer) -> None:
@@ -192,7 +245,8 @@ def run(
     val_scores: dict[str, dict[str, float]] = {}
     val_pred: dict[str, FloatArray] = {}
     kinds = ("gru", "node")
-    trained = train_many([(k, cfg.seed * 1000 + 1) for k in kinds], data, norm, cfg, log)
+    trained = train_many([(k, cfg.seed * 1000 + 1) for k in kinds], data, norm, cfg, log,
+                         cache=out / "models")
     for kind, res in zip(kinds, trained, strict=True):
         cand[kind] = res
         val_pred[kind] = predict_mv(cand[kind].model, norm, val.theta, val.current)
@@ -211,7 +265,7 @@ def run(
     # 3. Deep ensemble of the winner ----------------------------------------
     log(f"[3/6] training ensemble of {cfg.ensemble.members} x {KIND_NAME[winner]}")
     extra = train_many([(winner, cfg.seed * 1000 + 1 + k) for k in range(1, cfg.ensemble.members)],
-                       data, norm, cfg, log)
+                       data, norm, cfg, log, cache=out / "models")
     members = [cand[winner].model] + [r.model for r in extra]
     ens_seconds = [cand[winner].seconds] + [r.seconds for r in extra]
     ens = Ensemble(members, norm)
@@ -321,8 +375,8 @@ def run(
         "lsoda_fallbacks": {k: v.n_fallback for k, v in data.items()},
         "selection": {
             "winner": winner,
-            "rule": "best validation mean Gamma among candidates with batched speed-up "
-                    f">= {cfg.eval.min_speedup:g}x vs scipy LSODA",
+            "rule": SELECTION_RULE.format(tie=GAMMA_TIE)
+            + f" (requirement: batched speed-up >= {cfg.eval.min_speedup:g}x vs scipy LSODA)",
             "speedup_vs_scipy": {k: _r(v, 1) for k, v in sel_speed.items()},
             "validation": {k: {m: _r(v) for m, v in s.items()} for k, s in val_scores.items()},
             "test_id_single_model": arch_test,
