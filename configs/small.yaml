@@ -1,0 +1,49 @@
+# Small default configuration: runs end-to-end on a laptop / CI runner CPU in a few
+# minutes. Fully offline: all data are simulated by the HH reference model.
+name: small
+seed: 0
+torch_threads: 0          # 0 = PyTorch default
+
+sim:
+  t_max_ms: 100.0         # trace length
+  dt_ms: 0.1              # stimulus / output sampling interval
+  rk4_substeps: 5         # dataset integrator step = dt / 5 = 0.02 ms
+  temperature: 6.3        # degC (HH 1952 reference temperature)
+
+params:                   # [low, high]; uniform sampling
+  train_box: {g_na: [100, 140], g_k: [28, 44], g_l: [0.2, 0.4], c_m: [0.85, 1.15]}
+  ood_box:   {g_na: [70, 170],  g_k: [18, 54], g_l: [0.1, 0.6], c_m: [0.7, 1.3]}
+
+data:
+  n_train: 800
+  n_val: 100
+  n_test: 100             # per test split (in-range, extrapolated params, novel stimuli)
+  n_workers: 2
+
+gru:
+  hidden: 64
+  layers: 2
+  patch: 5                # 5 samples = 0.5 ms per recurrent step
+  epochs: 20
+  batch_size: 32
+  lr: 3.0e-3
+
+node:
+  width: 64
+  depth: 3
+  substeps: 2             # RK4 step 0.05 ms (0.1 ms is unstable for HH)
+  epochs: 10
+  iters_per_epoch: 60
+  windows: [8, 32]        # multiple-shooting curriculum (samples)
+  batch_size: 128
+  lr: 2.0e-3
+
+ensemble:
+  members: 3
+
+eval:
+  coincidence_window_ms: 2.0
+  min_speedup: 100.0      # selection requires >= 100x batched speed-up vs scipy LSODA
+  speed_n_scipy: 20
+  speed_batch_sizes: [1, 256]
+  n_scipy_check: 20

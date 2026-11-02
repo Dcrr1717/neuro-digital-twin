@@ -1,0 +1,50 @@
+# Full configuration used for the committed results in docs/RESULTS.md.
+# ~40 min on a 4-core CPU (no GPU needed). Fully offline.
+name: full
+seed: 0
+torch_threads: 0          # 0 = PyTorch default (all cores)
+parallel_jobs: 4          # train independent models side by side (one process each)
+
+sim:
+  t_max_ms: 100.0
+  dt_ms: 0.1
+  rk4_substeps: 5
+  temperature: 6.3
+
+params:
+  train_box: {g_na: [100, 140], g_k: [28, 44], g_l: [0.2, 0.4], c_m: [0.85, 1.15]}
+  ood_box:   {g_na: [70, 170],  g_k: [18, 54], g_l: [0.1, 0.6], c_m: [0.7, 1.3]}
+
+data:
+  n_train: 4000
+  n_val: 300
+  n_test: 300
+  n_workers: 4
+
+gru:
+  hidden: 128
+  layers: 2
+  patch: 5
+  epochs: 60             # ~ the neural ODE's training wall-clock (equal budget)
+  batch_size: 64
+  lr: 2.0e-3
+
+node:
+  width: 128
+  depth: 4
+  substeps: 2
+  epochs: 30
+  iters_per_epoch: 120
+  windows: [8, 32, 96]
+  batch_size: 128
+  lr: 2.0e-3
+
+ensemble:
+  members: 5
+
+eval:
+  coincidence_window_ms: 2.0
+  min_speedup: 100.0      # selection requires >= 100x batched speed-up vs scipy LSODA
+  speed_n_scipy: 50
+  speed_batch_sizes: [1, 64, 1024]
+  n_scipy_check: 50

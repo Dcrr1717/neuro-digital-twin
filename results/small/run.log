@@ -1,0 +1,105 @@
+[1/6] simulating datasets (small)
+  train=800, val=100, test_id=100, test_ood_param=100, test_ood_stim=100 traces (17.4 s; stiff LSODA fallbacks: train=0, val=0, test_id=0, test_ood_param=2, test_ood_stim=0)
+[2/6] training candidate surrogates (GRU, neural ODE)
+  gru seed=1 epoch 1/20 train=0.9829 val=0.8511
+  gru seed=1 epoch 2/20 train=0.8611 val=0.6902
+  gru seed=1 epoch 3/20 train=0.6118 val=0.4693
+  gru seed=1 epoch 4/20 train=0.4592 val=0.4076
+  gru seed=1 epoch 5/20 train=0.3911 val=0.3418
+  gru seed=1 epoch 6/20 train=0.3606 val=0.3274
+  gru seed=1 epoch 7/20 train=0.3745 val=0.3280
+  gru seed=1 epoch 8/20 train=0.3118 val=0.3129
+  gru seed=1 epoch 9/20 train=0.3091 val=0.3174
+  gru seed=1 epoch 10/20 train=0.3347 val=0.2570
+  gru seed=1 epoch 11/20 train=0.2711 val=0.2889
+  gru seed=1 epoch 12/20 train=0.2570 val=0.2787
+  gru seed=1 epoch 13/20 train=0.2399 val=0.2108
+  gru seed=1 epoch 14/20 train=0.2142 val=0.2107
+  gru seed=1 epoch 15/20 train=0.2096 val=0.2025
+  gru seed=1 epoch 16/20 train=0.1824 val=0.2133
+  gru seed=1 epoch 17/20 train=0.1731 val=0.1786
+  gru seed=1 epoch 18/20 train=0.1616 val=0.1822
+  gru seed=1 epoch 19/20 train=0.1592 val=0.1772
+  gru seed=1 epoch 20/20 train=0.1581 val=0.1774
+  node seed=1 epoch 1/10 window=8 train=0.1730 val(full rollout)=185.2691
+  node seed=1 epoch 2/10 window=8 train=0.0676 val(full rollout)=12698312.7040
+  node seed=1 epoch 3/10 window=8 train=0.0352 val(full rollout)=2.7921
+  node seed=1 epoch 4/10 window=8 train=0.0150 val(full rollout)=1.5040
+  node seed=1 epoch 5/10 window=8 train=0.0077 val(full rollout)=0.9696
+  node seed=1 epoch 6/10 window=32 train=0.0623 val(full rollout)=0.8188
+  node seed=1 epoch 7/10 window=32 train=0.0241 val(full rollout)=0.6302
+  node seed=1 epoch 8/10 window=32 train=0.0204 val(full rollout)=0.6325
+  node seed=1 epoch 9/10 window=32 train=0.0176 val(full rollout)=0.6309
+  node seed=1 epoch 10/10 window=32 train=0.0176 val(full rollout)=0.5982
+  GRU: val Gamma=0.856 RMSE=3.42 mV (82 s, 52485 params)
+  neural ODE: val Gamma=0.702 RMSE=11.05 mV (78 s, 5640 params)
+  GRU: batched inference 174x faster than scipy (requirement: >= 100x)
+  neural ODE: batched inference 13x faster than scipy (requirement: >= 100x)
+  selected: GRU
+[3/6] training ensemble of 3 x GRU
+  gru seed=2 epoch 1/20 train=0.9932 val=0.8680
+  gru seed=2 epoch 2/20 train=0.8690 val=0.6757
+  gru seed=2 epoch 3/20 train=0.5959 val=0.4403
+  gru seed=2 epoch 4/20 train=0.4674 val=0.4002
+  gru seed=2 epoch 5/20 train=0.4184 val=0.3829
+  gru seed=2 epoch 6/20 train=0.4002 val=0.3196
+  gru seed=2 epoch 7/20 train=0.3540 val=0.2638
+  gru seed=2 epoch 8/20 train=0.2981 val=0.2932
+  gru seed=2 epoch 9/20 train=0.3282 val=0.3086
+  gru seed=2 epoch 10/20 train=0.3157 val=0.3442
+  gru seed=2 epoch 11/20 train=0.3273 val=0.4180
+  gru seed=2 epoch 12/20 train=0.3388 val=0.3211
+  gru seed=2 epoch 13/20 train=0.2913 val=0.2566
+  gru seed=2 epoch 14/20 train=0.2568 val=0.2090
+  gru seed=2 epoch 15/20 train=0.2146 val=0.2122
+  gru seed=2 epoch 16/20 train=0.1949 val=0.2020
+  gru seed=2 epoch 17/20 train=0.1917 val=0.2009
+  gru seed=2 epoch 18/20 train=0.1835 val=0.1958
+  gru seed=2 epoch 19/20 train=0.1743 val=0.1902
+  gru seed=2 epoch 20/20 train=0.1707 val=0.1898
+  gru seed=3 epoch 1/20 train=0.9803 val=0.8474
+  gru seed=3 epoch 2/20 train=0.8327 val=0.6480
+  gru seed=3 epoch 3/20 train=0.5740 val=0.4207
+  gru seed=3 epoch 4/20 train=0.4723 val=0.4299
+  gru seed=3 epoch 5/20 train=0.4533 val=0.4058
+  gru seed=3 epoch 6/20 train=0.4323 val=0.3804
+  gru seed=3 epoch 7/20 train=0.3841 val=0.3309
+  gru seed=3 epoch 8/20 train=0.3633 val=0.3391
+  gru seed=3 epoch 9/20 train=0.4006 val=0.3112
+  gru seed=3 epoch 10/20 train=0.3179 val=0.3160
+  gru seed=3 epoch 11/20 train=0.3510 val=0.3116
+  gru seed=3 epoch 12/20 train=0.2675 val=0.2355
+  gru seed=3 epoch 13/20 train=0.2699 val=0.2539
+  gru seed=3 epoch 14/20 train=0.2388 val=0.2527
+  gru seed=3 epoch 15/20 train=0.2051 val=0.2058
+  gru seed=3 epoch 16/20 train=0.1816 val=0.2058
+  gru seed=3 epoch 17/20 train=0.1682 val=0.1967
+  gru seed=3 epoch 18/20 train=0.1609 val=0.1923
+  gru seed=3 epoch 19/20 train=0.1582 val=0.1907
+  gru seed=3 epoch 20/20 train=0.1507 val=0.1883
+[4/6] evaluating on held-out splits
+  val: Gamma=0.840 RMSE(median)=3.57 mV count-exact=0.69 u(median)=0.77 mV
+  test_id: Gamma=0.890 RMSE(median)=3.91 mV count-exact=0.70 u(median)=0.75 mV
+  test_ood_param: Gamma=0.765 RMSE(median)=5.12 mV count-exact=0.64 u(median)=1.07 mV
+  test_ood_stim: Gamma=0.568 RMSE(median)=10.17 mV count-exact=0.29 u(median)=2.16 mV
+  uncertainty: AUROC(ID vs OOD params)=0.625 AUROC(ID vs OOD stim)=0.884 flag rates={'test_id': 0.03, 'test_ood_param': 0.19, 'test_ood_stim': 0.39}
+[5/6] benchmarking speed
+  scipy LSODA: 123.7 ms/trace
+  numpy RK4 (batch 256): 10.03 ms/trace
+  GRU_b1_t1: 9.038 ms/trace
+  GRU_b256_t1: 0.685 ms/trace
+  neural ODE_b1_t1: 434.977 ms/trace
+  neural ODE_b256_t1: 5.261 ms/trace
+  ensemble3_b256_t1: 2.148 ms/trace
+  GRU_b1_t4: 9.189 ms/trace
+  GRU_b256_t4: 0.522 ms/trace
+  neural ODE_b1_t4: 433.945 ms/trace
+  neural ODE_b256_t4: 5.669 ms/trace
+  ensemble3_b256_t4: 1.377 ms/trace
+  RK4 dataset integrator vs LSODA(rtol=1e-9): max |dV|=7.92e-03 mV, Gamma=1.000
+[6/6] writing metrics, report and figures
+done in 383 s -> results/small
+
+real	6m27.424s
+user	22m2.968s
+sys	0m7.387s

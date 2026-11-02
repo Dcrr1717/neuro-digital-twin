@@ -1,0 +1,671 @@
+{
+  "config": {
+    "name": "small",
+    "seed": 0,
+    "torch_threads": 0,
+    "parallel_jobs": 1,
+    "sim": {
+      "t_max_ms": 100.0,
+      "dt_ms": 0.1,
+      "rk4_substeps": 5,
+      "temperature": 6.3,
+      "rtol": 1e-06,
+      "atol": 1e-08
+    },
+    "params": {
+      "train_box": {
+        "g_na": [
+          100,
+          140
+        ],
+        "g_k": [
+          28,
+          44
+        ],
+        "g_l": [
+          0.2,
+          0.4
+        ],
+        "c_m": [
+          0.85,
+          1.15
+        ]
+      },
+      "ood_box": {
+        "g_na": [
+          70,
+          170
+        ],
+        "g_k": [
+          18,
+          54
+        ],
+        "g_l": [
+          0.1,
+          0.6
+        ],
+        "c_m": [
+          0.7,
+          1.3
+        ]
+      }
+    },
+    "stimulus": {
+      "onset_ms": [
+        5.0,
+        20.0
+      ],
+      "step_amp": [
+        -8.0,
+        20.0
+      ],
+      "step_duration_ms": [
+        20.0,
+        90.0
+      ],
+      "ramp_peak": [
+        0.0,
+        30.0
+      ],
+      "noise_mean": [
+        -2.0,
+        10.0
+      ],
+      "noise_std": [
+        0.0,
+        8.0
+      ],
+      "noise_tau_ms": [
+        1.0,
+        10.0
+      ],
+      "pulse_amp": [
+        5.0,
+        60.0
+      ],
+      "pulse_width_ms": [
+        0.5,
+        2.0
+      ],
+      "pulse_rate_hz": [
+        10.0,
+        150.0
+      ],
+      "strong_step_amp": [
+        25.0,
+        60.0
+      ],
+      "chirp_offset": [
+        0.0,
+        6.0
+      ],
+      "chirp_amp": [
+        4.0,
+        15.0
+      ],
+      "chirp_f_hz": [
+        2.0,
+        200.0
+      ],
+      "id_weights": {
+        "step": 0.3,
+        "ramp": 0.15,
+        "noise": 0.35,
+        "pulses": 0.2
+      }
+    },
+    "data": {
+      "n_train": 800,
+      "n_val": 100,
+      "n_test": 100,
+      "n_workers": 2
+    },
+    "gru": {
+      "hidden": 64,
+      "layers": 2,
+      "patch": 5,
+      "epochs": 20,
+      "batch_size": 32,
+      "lr": 0.003,
+      "weight_decay": 1e-05
+    },
+    "node": {
+      "width": 64,
+      "depth": 3,
+      "substeps": 2,
+      "epochs": 10,
+      "iters_per_epoch": 60,
+      "windows": [
+        8,
+        32
+      ],
+      "batch_size": 128,
+      "lr": 0.002
+    },
+    "ensemble": {
+      "members": 3
+    },
+    "eval": {
+      "coincidence_window_ms": 2.0,
+      "min_speedup": 100.0,
+      "flag_quantile": 0.95,
+      "speed_n_scipy": 20,
+      "speed_batch_sizes": [
+        1,
+        256
+      ],
+      "n_scipy_check": 20,
+      "fi_currents": [
+        0.0,
+        2.0,
+        4.0,
+        6.0,
+        8.0,
+        10.0,
+        15.0,
+        20.0,
+        30.0,
+        45.0
+      ]
+    }
+  },
+  "environment": {
+    "python": "3.13.18",
+    "torch": "2.15.0+cu132",
+    "numpy": "2.5.4",
+    "cpu_threads": 4,
+    "machine": "x86_64"
+  },
+  "data_seconds": 17.4,
+  "lsoda_fallbacks": {
+    "train": 0,
+    "val": 0,
+    "test_id": 0,
+    "test_ood_param": 2,
+    "test_ood_stim": 0
+  },
+  "selection": {
+    "winner": "gru",
+    "rule": "candidates meeting the speed-up requirement (all, if none does) whose validation mean Gamma is within 0.01 of the best are equally accurate; among them the fastest is chosen (requirement: batched speed-up >= 100x vs scipy LSODA)",
+    "speedup_vs_scipy": {
+      "gru": 173.8,
+      "node": 12.8
+    },
+    "validation": {
+      "gru": {
+        "rmse_mv_mean": 5.909,
+        "rmse_mv_median": 3.415,
+        "sub_rmse_mv_median": 1.152,
+        "gamma_mean": 0.856,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.82,
+        "spike_count_exact": 0.72,
+        "spike_count_mae": 0.65,
+        "spike_count_r2": 0.686,
+        "latency_err_ms_median": 0.045,
+        "frac_spiking": 0.8,
+        "n_traces": 100.0
+      },
+      "node": {
+        "rmse_mv_mean": 12.765,
+        "rmse_mv_median": 11.049,
+        "sub_rmse_mv_median": 2.733,
+        "gamma_mean": 0.702,
+        "gamma_median": 0.818,
+        "gamma_mean_spiking": 0.666,
+        "spike_count_exact": 0.58,
+        "spike_count_mae": 0.56,
+        "spike_count_r2": 0.868,
+        "latency_err_ms_median": 0.116,
+        "frac_spiking": 0.8,
+        "n_traces": 100.0
+      }
+    },
+    "test_id_single_model": {
+      "gru": {
+        "rmse_mv_mean": 5.061,
+        "rmse_mv_median": 3.59,
+        "sub_rmse_mv_median": 1.044,
+        "gamma_mean": 0.903,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.877,
+        "spike_count_exact": 0.77,
+        "spike_count_mae": 0.45,
+        "spike_count_r2": 0.823,
+        "latency_err_ms_median": 0.048,
+        "frac_spiking": 0.79,
+        "n_traces": 100.0
+      },
+      "node": {
+        "rmse_mv_mean": 12.436,
+        "rmse_mv_median": 12.053,
+        "sub_rmse_mv_median": 2.495,
+        "gamma_mean": 0.764,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.764,
+        "spike_count_exact": 0.65,
+        "spike_count_mae": 0.48,
+        "spike_count_r2": 0.857,
+        "latency_err_ms_median": 0.108,
+        "frac_spiking": 0.79,
+        "n_traces": 100.0
+      }
+    },
+    "train_seconds": {
+      "gru": 81.6,
+      "node": 78.4
+    },
+    "n_parameters": {
+      "gru": 52485,
+      "node": 5640
+    },
+    "best_epoch": {
+      "gru": 18,
+      "node": 9
+    }
+  },
+  "ensemble": {
+    "members": 3,
+    "train_seconds": [
+      81.6,
+      77.6,
+      79.3
+    ]
+  },
+  "splits": {
+    "val": {
+      "ensemble": {
+        "rmse_mv_mean": 5.871,
+        "rmse_mv_median": 3.572,
+        "sub_rmse_mv_median": 1.085,
+        "gamma_mean": 0.84,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.801,
+        "spike_count_exact": 0.69,
+        "spike_count_mae": 0.75,
+        "spike_count_r2": 0.608,
+        "latency_err_ms_median": 0.057,
+        "frac_spiking": 0.8,
+        "n_traces": 100.0
+      },
+      "single_member_mean": {
+        "rmse_mv_mean": 6.086,
+        "rmse_mv_median": 3.806,
+        "sub_rmse_mv_median": 1.203,
+        "gamma_mean": 0.842,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.802,
+        "spike_count_exact": 0.69,
+        "spike_count_mae": 0.673,
+        "spike_count_r2": 0.689,
+        "latency_err_ms_median": 0.052,
+        "frac_spiking": 0.8,
+        "n_traces": 100.0
+      },
+      "summary_feature_errors": {
+        "rate_hz_mae": 7.5,
+        "first_latency_ms_mae": 1.301,
+        "v_mean_sub_mv_mae": 1.243,
+        "v_max_mv_mae": 9.94
+      },
+      "coverage_2sigma": 0.58,
+      "uncertainty_mv_median": 0.767,
+      "spearman_uncertainty_vs_rmse": 0.887
+    },
+    "test_id": {
+      "ensemble": {
+        "rmse_mv_mean": 4.911,
+        "rmse_mv_median": 3.909,
+        "sub_rmse_mv_median": 1.059,
+        "gamma_mean": 0.89,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.861,
+        "spike_count_exact": 0.7,
+        "spike_count_mae": 0.61,
+        "spike_count_r2": 0.725,
+        "latency_err_ms_median": 0.053,
+        "frac_spiking": 0.79,
+        "n_traces": 100.0
+      },
+      "single_member_mean": {
+        "rmse_mv_mean": 5.176,
+        "rmse_mv_median": 4.059,
+        "sub_rmse_mv_median": 1.176,
+        "gamma_mean": 0.896,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.868,
+        "spike_count_exact": 0.737,
+        "spike_count_mae": 0.503,
+        "spike_count_r2": 0.794,
+        "latency_err_ms_median": 0.054,
+        "frac_spiking": 0.79,
+        "n_traces": 100.0
+      },
+      "summary_feature_errors": {
+        "rate_hz_mae": 6.1,
+        "first_latency_ms_mae": 0.762,
+        "v_mean_sub_mv_mae": 1.159,
+        "v_max_mv_mae": 6.51
+      },
+      "coverage_2sigma": 0.613,
+      "uncertainty_mv_median": 0.752,
+      "spearman_uncertainty_vs_rmse": 0.813
+    },
+    "test_ood_param": {
+      "ensemble": {
+        "rmse_mv_mean": 7.762,
+        "rmse_mv_median": 5.124,
+        "sub_rmse_mv_median": 1.553,
+        "gamma_mean": 0.765,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.69,
+        "spike_count_exact": 0.64,
+        "spike_count_mae": 1.16,
+        "spike_count_r2": 0.328,
+        "latency_err_ms_median": 0.084,
+        "frac_spiking": 0.76,
+        "n_traces": 100.0
+      },
+      "single_member_mean": {
+        "rmse_mv_mean": 8.264,
+        "rmse_mv_median": 5.215,
+        "sub_rmse_mv_median": 1.606,
+        "gamma_mean": 0.799,
+        "gamma_median": 1.0,
+        "gamma_mean_spiking": 0.736,
+        "spike_count_exact": 0.69,
+        "spike_count_mae": 0.777,
+        "spike_count_r2": 0.633,
+        "latency_err_ms_median": 0.095,
+        "frac_spiking": 0.76,
+        "n_traces": 100.0
+      },
+      "summary_feature_errors": {
+        "rate_hz_mae": 11.6,
+        "first_latency_ms_mae": 1.018,
+        "v_mean_sub_mv_mae": 2.385,
+        "v_max_mv_mae": 13.253
+      },
+      "coverage_2sigma": 0.594,
+      "uncertainty_mv_median": 1.069,
+      "spearman_uncertainty_vs_rmse": 0.9
+    },
+    "test_ood_stim": {
+      "ensemble": {
+        "rmse_mv_mean": 10.981,
+        "rmse_mv_median": 10.172,
+        "sub_rmse_mv_median": 4.612,
+        "gamma_mean": 0.568,
+        "gamma_median": 0.458,
+        "gamma_mean_spiking": 0.568,
+        "spike_count_exact": 0.29,
+        "spike_count_mae": 2.8,
+        "spike_count_r2": -3.14,
+        "latency_err_ms_median": 0.046,
+        "frac_spiking": 1.0,
+        "n_traces": 100.0
+      },
+      "single_member_mean": {
+        "rmse_mv_mean": 11.782,
+        "rmse_mv_median": 10.465,
+        "sub_rmse_mv_median": 3.963,
+        "gamma_mean": 0.574,
+        "gamma_median": 0.467,
+        "gamma_mean_spiking": 0.574,
+        "spike_count_exact": 0.307,
+        "spike_count_mae": 2.713,
+        "spike_count_r2": -3.042,
+        "latency_err_ms_median": 0.05,
+        "frac_spiking": 1.0,
+        "n_traces": 100.0
+      },
+      "summary_feature_errors": {
+        "rate_hz_mae": 28.0,
+        "first_latency_ms_mae": 0.274,
+        "v_mean_sub_mv_mae": 3.57,
+        "v_max_mv_mae": 4.753
+      },
+      "coverage_2sigma": 0.596,
+      "uncertainty_mv_median": 2.159,
+      "spearman_uncertainty_vs_rmse": 0.808
+    }
+  },
+  "family_gamma": {
+    "noise": 0.889,
+    "pulses": 0.932,
+    "ramp": 0.857,
+    "step": 0.872,
+    "chirp*": 0.865,
+    "strong_step*": 0.283
+  },
+  "uncertainty": {
+    "flag_threshold_mv": 2.888,
+    "flag_rate": {
+      "test_id": 0.03,
+      "test_ood_param": 0.19,
+      "test_ood_stim": 0.39
+    },
+    "flag_rate_with_range_check": {
+      "test_id": 0.03,
+      "test_ood_param": 1.0,
+      "test_ood_stim": 0.39
+    },
+    "auroc_id_vs_ood_param": 0.625,
+    "auroc_id_vs_ood_stim": 0.884,
+    "spearman_u_vs_rmse_pooled": 0.881,
+    "spearman_u_vs_extrapolation_distance": -0.098,
+    "gamma_mean_flagged": 0.323,
+    "gamma_mean_unflagged": 0.847,
+    "rmse_median_flagged": 15.232,
+    "rmse_median_unflagged": 4.382
+  },
+  "speed": {
+    "scipy_lsoda": {
+      "sec_per_trace": 0.123675,
+      "batch": 1.0,
+      "threads": 1.0,
+      "speedup_vs_scipy": 1.0,
+      "speedup_vs_numpy_rk4": 0.081086
+    },
+    "numpy_rk4_batch": {
+      "sec_per_trace": 0.010028,
+      "batch": 256.0,
+      "threads": 1.0,
+      "speedup_vs_scipy": 12.332522,
+      "speedup_vs_numpy_rk4": 1.0
+    },
+    "GRU_b1_t1": {
+      "sec_per_trace": 0.009038,
+      "batch": 1.0,
+      "threads": 1.0,
+      "speedup_vs_scipy": 13.683289,
+      "speedup_vs_numpy_rk4": 1.109529
+    },
+    "GRU_b256_t1": {
+      "sec_per_trace": 0.000685,
+      "batch": 256.0,
+      "threads": 1.0,
+      "speedup_vs_scipy": 180.483941,
+      "speedup_vs_numpy_rk4": 14.634796
+    },
+    "neural ODE_b1_t1": {
+      "sec_per_trace": 0.434977,
+      "batch": 1.0,
+      "threads": 1.0,
+      "speedup_vs_scipy": 0.284325,
+      "speedup_vs_numpy_rk4": 0.023055
+    },
+    "neural ODE_b256_t1": {
+      "sec_per_trace": 0.005261,
+      "batch": 256.0,
+      "threads": 1.0,
+      "speedup_vs_scipy": 23.508564,
+      "speedup_vs_numpy_rk4": 1.906225
+    },
+    "ensemble3_b256_t1": {
+      "sec_per_trace": 0.002148,
+      "batch": 256.0,
+      "threads": 1.0,
+      "speedup_vs_scipy": 57.571143,
+      "speedup_vs_numpy_rk4": 4.668238
+    },
+    "GRU_b1_t4": {
+      "sec_per_trace": 0.009189,
+      "batch": 1.0,
+      "threads": 4.0,
+      "speedup_vs_scipy": 13.458416,
+      "speedup_vs_numpy_rk4": 1.091295
+    },
+    "GRU_b256_t4": {
+      "sec_per_trace": 0.000522,
+      "batch": 256.0,
+      "threads": 4.0,
+      "speedup_vs_scipy": 236.99758,
+      "speedup_vs_numpy_rk4": 19.217285
+    },
+    "neural ODE_b1_t4": {
+      "sec_per_trace": 0.433945,
+      "batch": 1.0,
+      "threads": 4.0,
+      "speedup_vs_scipy": 0.285001,
+      "speedup_vs_numpy_rk4": 0.02311
+    },
+    "neural ODE_b256_t4": {
+      "sec_per_trace": 0.005669,
+      "batch": 256.0,
+      "threads": 4.0,
+      "speedup_vs_scipy": 21.817483,
+      "speedup_vs_numpy_rk4": 1.769102
+    },
+    "ensemble3_b256_t4": {
+      "sec_per_trace": 0.001377,
+      "batch": 256.0,
+      "threads": 4.0,
+      "speedup_vs_scipy": 89.830754,
+      "speedup_vs_numpy_rk4": 7.284054
+    }
+  },
+  "reference_agreement": {
+    "n_traces": 20.0,
+    "max_abs_err_mv": 0.007918,
+    "rmse_mv": 0.000156,
+    "gamma_mean": 1.0
+  },
+  "fi": {
+    "labels": [
+      "classic HH",
+      "low gNa / high gK",
+      "high gNa / low gK"
+    ],
+    "thetas": [
+      [
+        120.0,
+        36.0,
+        0.3,
+        1.0
+      ],
+      [
+        100.0,
+        44.0,
+        0.4,
+        0.85
+      ],
+      [
+        140.0,
+        28.0,
+        0.2,
+        1.15
+      ]
+    ],
+    "amps": [
+      0.0,
+      2.0,
+      4.0,
+      6.0,
+      8.0,
+      10.0,
+      15.0,
+      20.0,
+      30.0,
+      45.0
+    ],
+    "true_hz": [
+      [
+        0.0,
+        0.0,
+        11.11111111111111,
+        22.22222222222222,
+        66.66666666666667,
+        66.66666666666667,
+        77.77777777777779,
+        88.88888888888889,
+        100.0,
+        111.11111111111111
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        11.11111111111111,
+        11.11111111111111,
+        11.11111111111111,
+        11.11111111111111,
+        11.11111111111111,
+        22.22222222222222,
+        22.22222222222222
+      ],
+      [
+        0.0,
+        55.55555555555556,
+        66.66666666666667,
+        66.66666666666667,
+        77.77777777777779,
+        77.77777777777779,
+        88.88888888888889,
+        100.0,
+        111.11111111111111,
+        122.22222222222223
+      ]
+    ],
+    "twin_hz": [
+      [
+        0.0,
+        0.0,
+        11.11,
+        11.11,
+        18.52,
+        18.52,
+        33.33,
+        25.93,
+        11.11,
+        11.11
+      ],
+      [
+        0.0,
+        0.0,
+        0.0,
+        11.11,
+        11.11,
+        11.11,
+        11.11,
+        11.11,
+        11.11,
+        11.11
+      ],
+      [
+        0.0,
+        25.93,
+        66.67,
+        66.67,
+        74.07,
+        70.37,
+        70.37,
+        74.07,
+        11.11,
+        11.11
+      ]
+    ],
+    "mae_hz": 24.07
+  },
+  "total_seconds": 383.4
+}
