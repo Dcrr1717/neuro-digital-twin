@@ -43,6 +43,7 @@ ensemble:
 
 eval:
   coincidence_window_ms: 2.0
+  min_speedup: 100.0      # selection requires >= 100x batched speed-up vs scipy LSODA
   speed_n_scipy: 20
   speed_batch_sizes: [1, 256]
   n_scipy_check: 20

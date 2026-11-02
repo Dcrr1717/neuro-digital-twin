@@ -25,7 +25,7 @@ gru:
   hidden: 128
   layers: 2
   patch: 5
-  epochs: 40
+  epochs: 60             # ~ the neural ODE's training wall-clock (equal budget)
   batch_size: 64
   lr: 2.0e-3
 
@@ -44,6 +44,7 @@ ensemble:
 
 eval:
   coincidence_window_ms: 2.0
+  min_speedup: 100.0      # selection requires >= 100x batched speed-up vs scipy LSODA
   speed_n_scipy: 50
   speed_batch_sizes: [1, 64, 1024]
   n_scipy_check: 50

@@ -25,6 +25,7 @@ from .evaluate import (
     extrapolation_distance,
     fi_curves,
     reference_agreement,
+    selection_speedups,
     spearman,
     speed_benchmark,
     summary_errors,
@@ -102,10 +103,21 @@ def train_many(
     return results
 
 
-def select_model(scores: dict[str, dict[str, float]]) -> str:
-    """Pick the architecture with the best validation spike timing (mean Gamma),
-    breaking near-ties (< 0.01) by the lower median voltage RMSE."""
-    kinds = sorted(scores, key=lambda k: -scores[k]["gamma_mean"])
+def select_model(
+    scores: dict[str, dict[str, float]],
+    speedups: dict[str, float] | None = None,
+    min_speedup: float = 0.0,
+) -> str:
+    """Pick the architecture for the twin.
+
+    Rule: among candidates whose batched inference is at least ``min_speedup``
+    times faster than the reference solver (all candidates if none is), take
+    the best validation spike timing (mean Gamma), breaking near-ties (< 0.01)
+    by the lower median voltage RMSE.
+    """
+    eligible = [k for k in scores if speedups is None or speedups[k] >= min_speedup]
+    eligible = eligible or list(scores)
+    kinds = sorted(eligible, key=lambda k: -scores[k]["gamma_mean"])
     best = kinds[0]
     for k in kinds[1:]:
         close = abs(scores[k]["gamma_mean"] - scores[best]["gamma_mean"]) < 0.01
@@ -189,7 +201,11 @@ def run(
         log(f"  {KIND_NAME[kind]}: val Gamma={val_scores[kind]['gamma_mean']:.3f} "
             f"RMSE={val_scores[kind]['rmse_mv_median']:.2f} mV "
             f"({cand[kind].seconds:.0f} s, {count_parameters(cand[kind].model)} params)")
-    winner = select_model(val_scores)
+    sel_speed = selection_speedups(cfg, val, {k: cand[k].model for k in kinds}, norm)
+    for kind in kinds:
+        log(f"  {KIND_NAME[kind]}: batched inference {sel_speed[kind]:.0f}x faster than scipy "
+            f"(requirement: >= {cfg.eval.min_speedup:.0f}x)")
+    winner = select_model(val_scores, sel_speed, cfg.eval.min_speedup)
     log(f"  selected: {KIND_NAME[winner]}")
 
     # 3. Deep ensemble of the winner ----------------------------------------
@@ -305,6 +321,9 @@ def run(
         "lsoda_fallbacks": {k: v.n_fallback for k, v in data.items()},
         "selection": {
             "winner": winner,
+            "rule": "best validation mean Gamma among candidates with batched speed-up "
+                    f">= {cfg.eval.min_speedup:g}x vs scipy LSODA",
+            "speedup_vs_scipy": {k: _r(v, 1) for k, v in sel_speed.items()},
             "validation": {k: {m: _r(v) for m, v in s.items()} for k, s in val_scores.items()},
             "test_id_single_model": arch_test,
             "train_seconds": {k: _r(r.seconds, 1) for k, r in cand.items()},
@@ -426,14 +445,15 @@ def render_report(m: dict[str, Any]) -> str:
     sel = m["selection"]
     lines += ["## Architecture selection (validation split, single model each)", "",
               "| model | params | train time (s) | mean Gamma | exact spike count | "
-              "median RMSE (mV) | median sub-threshold RMSE (mV) |",
-              "|---|---|---|---|---|---|---|"]
+              "median RMSE (mV) | median sub-threshold RMSE (mV) | speed-up vs scipy |",
+              "|---|---|---|---|---|---|---|---|"]
     for k, s in sel["validation"].items():
         lines.append(f"| {KIND_NAME[k]} | {sel['n_parameters'][k]:,} | "
                      f"{_fmt(sel['train_seconds'][k], 0)} | {_fmt(s['gamma_mean'])} | "
                      f"{_fmt(s['spike_count_exact'])} | {_fmt(s['rmse_mv_median'], 2)} | "
-                     f"{_fmt(s['sub_rmse_mv_median'], 2)} |")
-    lines += ["", f"Selected: **{KIND_NAME[sel['winner']]}**.", ""]
+                     f"{_fmt(s['sub_rmse_mv_median'], 2)} | "
+                     f"{_fmt(sel['speedup_vs_scipy'][k], 0)}x |")
+    lines += ["", f"Rule: {sel['rule']}. Selected: **{KIND_NAME[sel['winner']]}**.", ""]
 
     lines += ["## Held-out accuracy of the twin (ensemble mean)", "",
               "| split | traces | spiking | mean Gamma | median Gamma | exact spike count | "
@@ -522,7 +542,7 @@ def tiny_config_dict() -> dict[str, Any]:
                  "batch_size": 16},
         "ensemble": {"members": 2},
         "eval": {"speed_n_scipy": 2, "speed_batch_sizes": [1, 8], "n_scipy_check": 2,
-                 "fi_currents": [0.0, 10.0]},
+                 "fi_currents": [0.0, 10.0], "min_speedup": 0.0},
     }
 
 

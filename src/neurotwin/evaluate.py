@@ -201,6 +201,28 @@ def speed_benchmark(
     return res
 
 
+def selection_speedups(
+    cfg: Config, ds: Dataset, models: dict[str, Surrogate], norm: Normalizer, n_ref: int = 10
+) -> dict[str, float]:
+    """Quick batched-inference speed-up of each candidate vs scipy LSODA.
+
+    Used for architecture selection; the full benchmark comes later.
+    """
+    base = HHParams(temperature=cfg.sim.temperature)
+    n_ref = min(n_ref, len(ds))
+    t0 = time.perf_counter()
+    for k in range(n_ref):
+        simulate_scipy(ds.theta[k], ds.current[k], cfg.sim.dt_ms, base, cfg.sim.rtol, cfg.sim.atol)
+    ref = (time.perf_counter() - t0) / n_ref
+    big = max(cfg.eval.speed_batch_sizes)
+    th, cur = _tile(ds, big)
+    out = {}
+    for name, model in models.items():
+        t = time_call(partial(predict_mv, model, norm, th, cur, big), repeats=1)
+        out[name] = ref / (t / big)
+    return out
+
+
 def reference_agreement(cfg: Config, ds: Dataset) -> dict[str, float]:
     """Discrepancy between the dataset integrator (RK4) and scipy LSODA."""
     n = min(cfg.eval.n_scipy_check, len(ds))

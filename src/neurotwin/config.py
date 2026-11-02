@@ -95,6 +95,9 @@ class EnsembleConfig:
 @dataclass(frozen=True)
 class EvalConfig:
     coincidence_window_ms: float = 2.0
+    # Architecture selection: the most accurate candidate whose batched inference
+    # is at least this many times faster than scipy LSODA (the twin's purpose).
+    min_speedup: float = 100.0
     flag_quantile: float = 0.95
     speed_n_scipy: int = 20
     speed_batch_sizes: tuple[int, ...] = (1, 256)
