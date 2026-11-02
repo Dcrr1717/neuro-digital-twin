@@ -98,9 +98,10 @@ milliseconds.
   (rtol = 1e-9) to about 0.01 mV, with identical spike trains (Γ = 1; see
   RESULTS). That is orders of magnitude below any surrogate error.
 * Explicit RK4 is only conditionally stable. In the rare traces where it
-  diverges (deep hyperpolarisation under extrapolated parameters; 2 of 400
-  test traces in the small configuration), the trace is recomputed with
-  stiff LSODA.
+  diverges, the trace is recomputed with stiff LSODA. This happens under
+  deep hyperpolarisation by strongly negative noise. It affected 1 of 5 200
+  traces in the full configuration (a training trace) and 2 of 1 200 in the
+  small one (both with extrapolated, low-leak parameters).
 
 The stimulus is a **zero-order hold** on a 0.1 ms grid: the current is constant
 on each sampling interval, like the output of a digital stimulator. The
@@ -174,29 +175,56 @@ finite step** instead of the instantaneous vector field:
 * Training uses backpropagation through the whole 100 ms trace (200 recurrent
   steps), with an MSE loss on voltage only.
 
-### 3.3 Why the GRU wins
+### 3.3 Choosing between them
 
-Validation results decide the choice (see RESULTS). The reasons are structural:
+Both candidates are trained on the same data with about the same training
+wall-clock (~21 min each on 2 CPU threads in the full configuration). The
+twin exists to be fast, so the selection rule is:
 
-1. **Stiffness is inherited by the neural ODE.** A learned vector field
-   reproduces the HH time scales, so an explicit integrator needs the same
-   small steps as the original model. RK4 on the true HH equations diverges
-   at 0.1 ms; the neural ODE uses 0.05 ms. That means 2 000 network
-   evaluations per 100 ms trace, versus 200 recurrent steps for the GRU. At
-   batch size 1 the neural ODE is even *slower* than scipy. Stiff neural ODEs
-   are a known open problem (Kim et al. 2021; Kidger 2022).
-2. **Error accumulation.** Small one-step errors in the vector field compound
-   over thousands of steps. Near threshold they decide *whether* and *when* a
-   spike occurs. The GRU is trained end-to-end on the quantity that matters,
-   the whole trace, so it learns to correct its own drift.
-3. **Freedom in the time step.** A discrete-time model can step across the
-   fast dynamics because it never integrates them. It only has to reproduce
-   their net effect over 0.5 ms.
+1. Among candidates whose validation mean Γ is within 0.01 of the best, the
+   accuracy is treated as equal.
+2. Among those, the twin takes the one with the fastest batched inference.
 
-The neural ODE still has merits: it is time-continuous, can be queried at
-any resolution and exposes an interpretable state. A promising route to
-improve it is to build in more structure, for example gates relaxing towards
-learned steady states, integrated with exponential (Rush-Larsen 1978) steps.
+The results ([RESULTS](RESULTS.md)) support three findings.
+
+1. **With little data the GRU is clearly better.** With 800 training traces
+   (small config), the GRU reaches Γ 0.86 against 0.70 for the neural ODE.
+   Early in training, long neural-ODE rollouts even diverge.
+2. **With 4 000 traces the two are equally accurate.** Validation Γ is 0.948
+   for the GRU and 0.949 for the neural ODE; median RMSE is 1.65 vs 1.56 mV.
+   The neural ODE gets there with 6× fewer weights. It benefits from
+   privileged information (the gating variables) and from a strong inductive
+   bias: it only has to learn a smooth, local vector field.
+3. **The neural ODE is an order of magnitude slower, for a structural reason.**
+   * A learned vector field reproduces the HH time scales, so an explicit
+     integrator needs the same small steps as the original model. RK4 on the
+     true HH equations diverges at 0.1 ms, so the neural ODE uses 0.05 ms.
+   * That is 2 000 network evaluations per 100 ms trace, against 200 recurrent
+     steps for the GRU.
+   * Batched, the neural ODE is ~16× faster than scipy LSODA and the GRU
+     ~100–200×. For a single trace the neural ODE is *slower* than scipy.
+   * A discrete-time model escapes the constraint because it never integrates
+     the fast dynamics. It only has to reproduce their net effect over each
+     0.5 ms step.
+   * Stiff neural ODEs are a known open problem (Kim et al. 2021; Kidger 2022).
+
+The GRU is therefore the twin. The neural ODE still has merits:
+
+* it is time-continuous and can be queried at any resolution;
+* it exposes an interpretable state;
+* it is the more data-efficient choice per weight once data are plentiful.
+
+Implicit or exponential integrators could relax its speed limit. One example
+is gates relaxing towards learned steady states, integrated with Rush-Larsen
+(1978) steps.
+
+**How this rule came about.** The rule was revised during the study, and both
+earlier versions are recorded in RESULTS:
+
+* First version, accuracy alone: the neural ODE won by a small margin over a
+  GRU that had been given less training time.
+* Second version, a hard 100× speed gate: the GRU then measured 98×, with
+  timing noise of ±20 %, and was rejected.
 
 ## 4. Measuring accuracy the way electrophysiologists do
 
