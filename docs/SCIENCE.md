@@ -190,19 +190,27 @@ The results ([RESULTS](RESULTS.md)) support three findings.
 1. **With little data the GRU is clearly better.** With 800 training traces
    (small config), the GRU reaches Γ 0.86 against 0.70 for the neural ODE.
    Early in training, long neural-ODE rollouts even diverge.
-2. **With 4 000 traces the two are equally accurate.** Validation Γ is 0.948
-   for the GRU and 0.949 for the neural ODE; median RMSE is 1.65 vs 1.56 mV.
-   The neural ODE gets there with 6× fewer weights. It benefits from
-   privileged information (the gating variables) and from a strong inductive
-   bias: it only has to learn a smooth, local vector field.
+2. **With 4 000 traces the neural ODE is at least as accurate.** On the
+   primary metric they tie: validation Γ is 0.948 for the GRU and 0.949 for
+   the neural ODE. On secondary metrics the neural ODE is better:
+   * exact spike count: 0.95 vs 0.88;
+   * sub-threshold RMSE: 0.28 vs 0.47 mV;
+   * held-out test Γ: 0.943 vs 0.928.
+
+   It gets there with 6× fewer weights. It benefits from privileged
+   information (the gating variables) and from a strong inductive bias: it
+   only has to learn a smooth, local vector field.
 3. **The neural ODE is an order of magnitude slower, for a structural reason.**
    * A learned vector field reproduces the HH time scales, so an explicit
      integrator needs the same small steps as the original model. RK4 on the
      true HH equations diverges at 0.1 ms, so the neural ODE uses 0.05 ms.
    * That is 2 000 network evaluations per 100 ms trace, against 200 recurrent
      steps for the GRU.
-   * Batched, the neural ODE is ~16× faster than scipy LSODA and the GRU
-     ~100–200×. For a single trace the neural ODE is *slower* than scipy.
+   * Batched, the neural ODE is ~20× faster than scipy LSODA, and the GRU
+     ~170×. That puts the neural ODE no faster than integrating the *true*
+     HH equations with the same vectorised RK4 (4.2 vs 3.9 ms per trace),
+     so it offers no computational benefit over the model it emulates. For
+     a single trace it is 6× *slower* than scipy.
    * A discrete-time model escapes the constraint because it never integrates
      the fast dynamics. It only has to reproduce their net effect over each
      0.5 ms step.

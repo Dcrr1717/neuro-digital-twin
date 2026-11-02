@@ -13,6 +13,21 @@ it is extrapolating.
 
 ![true vs surrogate traces](docs/figures/traces_true_vs_surrogate.png)
 
+## Headline results
+
+These come from the full config on a 4-core CPU; details are in
+[`docs/RESULTS.md`](docs/RESULTS.md).
+
+| | |
+|---|---|
+| Twin | ensemble of 5 patch-wise GRUs, conditioned on $\bar g_{Na}, \bar g_K, g_L, C_m$ |
+| Accuracy, held-out parameters in the training range | spike coincidence Γ = 0.93; exact spike count in 88 % of traces; median RMSE 1.7 mV |
+| Accuracy, extrapolated parameters / novel stimuli | Γ = 0.90 / 0.76 |
+| Speed-up vs scipy LSODA | **167×** for one GRU and 26× for the 5-member ensemble (batch 1 024); 8× for a single trace |
+| Speed-up vs a vectorised numpy RK4 of the same equations | 7× for one GRU; about 1× for the ensemble |
+| Uncertainty | ensemble spread ranks errors (Spearman 0.90) and flags 90 % of traces with RMSE > 10 mV while flagging 23 % of traces |
+| Why a GRU and not a neural ODE? | The neural ODE is as accurate (better on some metrics), but it inherits HH stiffness and is no faster than integrating the real equations |
+
 ## What is in the box
 
 | component | file | notes |
@@ -64,11 +79,15 @@ Each run writes the following to `results/<name>/`:
 
 ### Using a trained twin from Python
 
+The 5-member ensemble from the full configuration is committed in
+`results/full/twin` (4 MB). It is valid for parameters inside the training box
+and 100 ms traces at 0.1 ms resolution that start from rest.
+
 ```python
 import numpy as np
 from neurotwin.pipeline import load_twin
 
-twin = load_twin("results/small/twin")         # written by `neurotwin run`
+twin = load_twin("results/full/twin")          # trained twin shipped in this repo
 theta = np.array([[120.0, 36.0, 0.3, 1.0]])    # g_Na, g_K, g_L (mS/cm^2), C_m (uF/cm^2)
 current = np.zeros((1, 1000))                  # 100 ms at dt = 0.1 ms, uA/cm^2
 current[0, 100:900] = 10.0                     # 80 ms step of 10 uA/cm^2
