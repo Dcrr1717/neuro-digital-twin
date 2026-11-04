@@ -98,6 +98,8 @@ class EvalConfig:
     # Architecture selection: the most accurate candidate whose batched inference
     # is at least this many times faster than scipy LSODA (the twin's purpose).
     min_speedup: float = 100.0
+    # Extra batch sizes timed on a CUDA device when one is available.
+    gpu_batch_sizes: tuple[int, ...] = (1, 1024, 8192)
     flag_quantile: float = 0.95
     speed_n_scipy: int = 20
     speed_batch_sizes: tuple[int, ...] = (1, 256)
@@ -111,6 +113,7 @@ class Config:
     seed: int = 0
     torch_threads: int = 0  # 0 = torch default
     parallel_jobs: int = 1  # independent models trained side by side (processes)
+    device: str = "auto"  # "auto" (CUDA if available), "cpu", "cuda", "cuda:N"
     sim: SimConfig = field(default_factory=SimConfig)
     params: ParamConfig = field(default_factory=ParamConfig)
     stimulus: StimulusConfig = field(default_factory=StimulusConfig)
@@ -153,7 +156,7 @@ def config_from_dict(d: dict[str, Any]) -> Config:
         "ensemble": EnsembleConfig,
         "eval": EvalConfig,
     }
-    scalars = ("name", "seed", "torch_threads", "parallel_jobs")
+    scalars = ("name", "seed", "torch_threads", "parallel_jobs", "device")
     unknown = set(d) - set(sections) - set(scalars)
     if unknown:
         raise ValueError(f"unknown config sections: {sorted(unknown)}")
@@ -165,6 +168,8 @@ def config_from_dict(d: dict[str, Any]) -> Config:
     for box in (cfg.params.train_box, cfg.params.ood_box):
         if set(box) != set(PARAM_NAMES):
             raise ValueError(f"parameter boxes must define exactly {PARAM_NAMES}")
+    if not (cfg.device in ("auto", "cpu", "cuda") or cfg.device.startswith("cuda:")):
+        raise ValueError(f"device must be auto, cpu, cuda or cuda:N, not {cfg.device!r}")
     if cfg.sim.n_steps % cfg.gru.patch != 0:
         raise ValueError("t_max_ms / dt_ms must be a multiple of gru.patch")
     return cfg

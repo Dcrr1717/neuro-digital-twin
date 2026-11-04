@@ -15,7 +15,7 @@ from .config import Config
 from .data import Dataset
 from .features import coincidence_factor, spike_mask, spike_times, summary_table
 from .hh import HHParams, simulate_batch, simulate_scipy
-from .models import Ensemble, Normalizer, Surrogate, predict_mv
+from .models import Ensemble, Normalizer, Surrogate, on_device, predict_mv
 
 FloatArray = NDArray[np.float64]
 
@@ -140,7 +140,8 @@ def time_call(fn: Callable[[], object], repeats: int = 3) -> float:
     return best
 
 
-def _tile(ds: Dataset, n: int) -> tuple[FloatArray, FloatArray]:
+def tile_inputs(ds: Dataset, n: int) -> tuple[FloatArray, FloatArray]:
+    """The first ``n`` (theta, current) pairs of ``ds``, repeated as needed."""
     reps = int(np.ceil(n / len(ds)))
     return np.tile(ds.theta, (reps, 1))[:n], np.tile(ds.current, (reps, 1))[:n]
 
@@ -157,7 +158,9 @@ def speed_benchmark(
 
     The scipy reference integrates traces one after another on one core (the
     usual workflow). The numpy RK4 integrator and the surrogates process a
-    batch at once; each is timed with 1 thread and with the default number.
+    batch at once; the surrogates are timed on the CPU with 1 thread and with
+    the default number, and, when a CUDA device is available, also on the GPU
+    (keys ending in ``_cuda``; GPU timings include the host-device copies).
     """
     base = HHParams(temperature=cfg.sim.temperature)
     dt = cfg.sim.dt_ms
@@ -172,26 +175,44 @@ def speed_benchmark(
     log(f"  scipy LSODA: {res['scipy_lsoda']['sec_per_trace'] * 1e3:.1f} ms/trace")
 
     big = max(cfg.eval.speed_batch_sizes)
-    th_big, cur_big = _tile(ds, big)
+    th_big, cur_big = tile_inputs(ds, big)
     t = time_call(lambda: simulate_batch(th_big, cur_big, dt, cfg.sim.rk4_substeps, base), 1)
     res["numpy_rk4_batch"] = {"sec_per_trace": t / big, "batch": float(big), "threads": 1.0}
     log(f"  numpy RK4 (batch {big}): {t / big * 1e3:.2f} ms/trace")
 
+    cpu_models = {name: on_device(m, "cpu") for name, m in models.items()}
+    cpu_ens = Ensemble([on_device(m, "cpu") for m in ensemble.members], norm)
     default_threads = torch.get_num_threads()
     for threads in sorted({1, default_threads}):
         torch.set_num_threads(threads)
-        for name, model in models.items():
+        for name, model in cpu_models.items():
             for bs in cfg.eval.speed_batch_sizes:
-                th, cur = _tile(ds, bs)
+                th, cur = tile_inputs(ds, bs)
                 t = time_call(partial(predict_mv, model, norm, th, cur, bs))
                 key = f"{name}_b{bs}_t{threads}"
                 res[key] = {"sec_per_trace": t / bs, "batch": float(bs), "threads": float(threads)}
                 log(f"  {key}: {t / bs * 1e3:.3f} ms/trace")
-        t = time_call(lambda: ensemble.predict(th_big, cur_big, big))
+        t = time_call(lambda: cpu_ens.predict(th_big, cur_big, big))
         key = f"ensemble{len(ensemble.members)}_b{big}_t{threads}"
         res[key] = {"sec_per_trace": t / big, "batch": float(big), "threads": float(threads)}
         log(f"  {key}: {t / big * 1e3:.3f} ms/trace")
     torch.set_num_threads(default_threads)
+
+    if torch.cuda.is_available():
+        gpu = torch.device("cuda")
+        gpu_models = {name: on_device(m, gpu) for name, m in models.items()}
+        gpu_ens = Ensemble([on_device(m, gpu) for m in ensemble.members], norm)
+        for bs in cfg.eval.gpu_batch_sizes:
+            th, cur = tile_inputs(ds, bs)
+            for name, model in gpu_models.items():
+                t = time_call(partial(predict_mv, model, norm, th, cur, bs))
+                key = f"{name}_b{bs}_cuda"
+                res[key] = {"sec_per_trace": t / bs, "batch": float(bs), "threads": 0.0}
+                log(f"  {key}: {t / bs * 1e3:.4f} ms/trace")
+            t = time_call(partial(gpu_ens.predict, th, cur, bs))
+            key = f"ensemble{len(ensemble.members)}_b{bs}_cuda"
+            res[key] = {"sec_per_trace": t / bs, "batch": float(bs), "threads": 0.0}
+            log(f"  {key}: {t / bs * 1e3:.4f} ms/trace")
 
     ref = res["scipy_lsoda"]["sec_per_trace"]
     rk4 = res["numpy_rk4_batch"]["sec_per_trace"]
@@ -215,7 +236,7 @@ def selection_speedups(
         simulate_scipy(ds.theta[k], ds.current[k], cfg.sim.dt_ms, base, cfg.sim.rtol, cfg.sim.atol)
     ref = (time.perf_counter() - t0) / n_ref
     big = max(cfg.eval.speed_batch_sizes)
-    th, cur = _tile(ds, big)
+    th, cur = tile_inputs(ds, big)
     out = {}
     for name, model in models.items():
         t = time_call(partial(predict_mv, model, norm, th, cur, big), repeats=1)

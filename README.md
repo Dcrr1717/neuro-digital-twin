@@ -77,6 +77,39 @@ Each run writes the following to `results/<name>/`:
 * `twin/`: the trained ensemble.
 * `data/`: the cached simulations.
 
+### Running on a GPU
+
+Training, inference and the benchmarks run on a CUDA GPU when PyTorch sees
+one: the configs default to `device: auto`. You can also force the device. In
+the commands below, `<config>.yaml` is any config, e.g. `configs/full.yaml`.
+
+```bash
+pip install torch   # a CUDA build of PyTorch, see pytorch.org
+```
+
+```bash
+python -m neurotwin run --config configs/full.yaml --device cuda --out results/full_gpu
+```
+
+```bash
+python -m neurotwin sweep --config configs/full.yaml --device cuda --out results/full_gpu --patches 5 10 20 50
+```
+
+On a GPU:
+
+* The speed benchmark also times every surrogate on the GPU, at batch sizes 1,
+  1 024 and 8 192. GPU timings include the copies between host and device.
+* The sweep adds GPU columns.
+* CPU timings are still measured, for comparison.
+* Models trained on a GPU are cached separately from CPU-trained ones.
+
+### Patch-size sweep
+
+`neurotwin sweep` trains one GRU per patch length (samples per recurrent step).
+Every model uses the same data, seed and number of epochs. The sweep reports
+accuracy on every held-out split and inference speed. Run in the output
+directory of a finished experiment, it reuses that run's datasets and models.
+
 ### Using a trained twin from Python
 
 The 5-member ensemble from the full configuration is committed in
