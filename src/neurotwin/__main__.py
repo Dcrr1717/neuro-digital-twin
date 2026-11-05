@@ -1,6 +1,7 @@
 """Command-line interface.
 
     python -m neurotwin run   --config configs/small.yaml [--device cuda]
+    python -m neurotwin run   --config configs/full.yaml --set gru.patch=10 --set name=full_p10
     python -m neurotwin sweep --config configs/full.yaml --out results/full --patches 5 10 20 50
 """
 
@@ -9,8 +10,11 @@ from __future__ import annotations
 import argparse
 from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
-from .config import Config, load_config
+import yaml
+
+from .config import Config, config_from_dict
 
 
 def _common(p: argparse.ArgumentParser, default_config: str) -> None:
@@ -19,10 +23,30 @@ def _common(p: argparse.ArgumentParser, default_config: str) -> None:
     p.add_argument("--figdir", default=None, help="figure directory (default <out>/figures)")
     p.add_argument("--device", default=None,
                    help="override the config's device: auto, cpu, cuda or cuda:N")
+    p.add_argument("--set", dest="overrides", action="append", default=[], metavar="KEY=VALUE",
+                   help="override a config entry, e.g. --set gru.patch=10 (repeatable)")
+
+
+def apply_overrides(raw: dict[str, Any], overrides: list[str]) -> dict[str, Any]:
+    """Apply ``section.key=value`` overrides (values parsed as YAML) to a raw config."""
+    for item in overrides:
+        key, sep, value = item.partition("=")
+        if not sep or not key:
+            raise SystemExit(f"--set expects KEY=VALUE, got {item!r}")
+        node = raw
+        *parents, leaf = key.split(".")
+        for part in parents:
+            node = node.setdefault(part, {})
+            if not isinstance(node, dict):
+                raise SystemExit(f"--set {key}: {part!r} is not a section")
+        node[leaf] = yaml.safe_load(value)
+    return raw
 
 
 def _load(args: argparse.Namespace) -> tuple[Config, Path, Path | None]:
-    cfg = load_config(args.config)
+    with open(args.config, encoding="utf-8") as fh:
+        raw = yaml.safe_load(fh) or {}
+    cfg = config_from_dict(apply_overrides(raw, args.overrides))
     if args.device:
         cfg = replace(cfg, device=args.device)
     out = Path(args.out) if args.out else Path("results") / cfg.name

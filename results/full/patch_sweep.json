@@ -1,0 +1,167 @@
+{
+  "config": "full",
+  "device_trained": "cpu",
+  "gpu": null,
+  "cpu_threads": 4,
+  "scipy_ms_per_trace": 87.171,
+  "epochs": 60,
+  "rows": [
+    {
+      "patch": 5,
+      "step_ms": 0.5,
+      "recurrent_steps": 200,
+      "train_seconds": 1243.9,
+      "best_epoch": 57,
+      "val": {
+        "gamma_mean": 0.9476,
+        "spike_count_exact": 0.88,
+        "rmse_mv_median": 1.6534,
+        "sub_rmse_mv_median": 0.4719
+      },
+      "test_id": {
+        "gamma_mean": 0.9275,
+        "spike_count_exact": 0.8867,
+        "rmse_mv_median": 1.8019,
+        "sub_rmse_mv_median": 0.5227
+      },
+      "test_ood_param": {
+        "gamma_mean": 0.8948,
+        "spike_count_exact": 0.8933,
+        "rmse_mv_median": 2.5675,
+        "sub_rmse_mv_median": 0.6875
+      },
+      "test_ood_stim": {
+        "gamma_mean": 0.7947,
+        "spike_count_exact": 0.6467,
+        "rmse_mv_median": 4.1029,
+        "sub_rmse_mv_median": 0.7858
+      },
+      "ms_per_trace": {
+        "cpu_b1": 11.75105,
+        "cpu_b1024": 0.69896
+      },
+      "speedup_vs_scipy": {
+        "cpu_b1": 7.4,
+        "cpu_b1024": 124.7
+      }
+    },
+    {
+      "patch": 10,
+      "step_ms": 1.0,
+      "recurrent_steps": 100,
+      "train_seconds": 628.9,
+      "best_epoch": 56,
+      "val": {
+        "gamma_mean": 0.9667,
+        "spike_count_exact": 0.9367,
+        "rmse_mv_median": 1.2542,
+        "sub_rmse_mv_median": 0.3356
+      },
+      "test_id": {
+        "gamma_mean": 0.9417,
+        "spike_count_exact": 0.8933,
+        "rmse_mv_median": 1.4038,
+        "sub_rmse_mv_median": 0.3772
+      },
+      "test_ood_param": {
+        "gamma_mean": 0.9048,
+        "spike_count_exact": 0.8933,
+        "rmse_mv_median": 2.6933,
+        "sub_rmse_mv_median": 0.6351
+      },
+      "test_ood_stim": {
+        "gamma_mean": 0.7707,
+        "spike_count_exact": 0.61,
+        "rmse_mv_median": 3.5096,
+        "sub_rmse_mv_median": 0.8904
+      },
+      "ms_per_trace": {
+        "cpu_b1": 9.87728,
+        "cpu_b1024": 0.34282
+      },
+      "speedup_vs_scipy": {
+        "cpu_b1": 8.8,
+        "cpu_b1024": 254.3
+      }
+    },
+    {
+      "patch": 20,
+      "step_ms": 2.0,
+      "recurrent_steps": 50,
+      "train_seconds": 320.4,
+      "best_epoch": 57,
+      "val": {
+        "gamma_mean": 0.9565,
+        "spike_count_exact": 0.9133,
+        "rmse_mv_median": 1.7676,
+        "sub_rmse_mv_median": 0.5253
+      },
+      "test_id": {
+        "gamma_mean": 0.9334,
+        "spike_count_exact": 0.8667,
+        "rmse_mv_median": 1.8956,
+        "sub_rmse_mv_median": 0.584
+      },
+      "test_ood_param": {
+        "gamma_mean": 0.9209,
+        "spike_count_exact": 0.8867,
+        "rmse_mv_median": 2.8804,
+        "sub_rmse_mv_median": 0.8271
+      },
+      "test_ood_stim": {
+        "gamma_mean": 0.7854,
+        "spike_count_exact": 0.58,
+        "rmse_mv_median": 5.3764,
+        "sub_rmse_mv_median": 1.4766
+      },
+      "ms_per_trace": {
+        "cpu_b1": 3.73298,
+        "cpu_b1024": 0.13637
+      },
+      "speedup_vs_scipy": {
+        "cpu_b1": 23.4,
+        "cpu_b1024": 639.2
+      }
+    },
+    {
+      "patch": 50,
+      "step_ms": 5.0,
+      "recurrent_steps": 20,
+      "train_seconds": 140.4,
+      "best_epoch": 50,
+      "val": {
+        "gamma_mean": 0.9176,
+        "spike_count_exact": 0.8367,
+        "rmse_mv_median": 2.9842,
+        "sub_rmse_mv_median": 0.8321
+      },
+      "test_id": {
+        "gamma_mean": 0.905,
+        "spike_count_exact": 0.78,
+        "rmse_mv_median": 3.494,
+        "sub_rmse_mv_median": 0.9436
+      },
+      "test_ood_param": {
+        "gamma_mean": 0.8857,
+        "spike_count_exact": 0.8167,
+        "rmse_mv_median": 4.7262,
+        "sub_rmse_mv_median": 1.3291
+      },
+      "test_ood_stim": {
+        "gamma_mean": 0.7298,
+        "spike_count_exact": 0.4333,
+        "rmse_mv_median": 9.7581,
+        "sub_rmse_mv_median": 2.6718
+      },
+      "ms_per_trace": {
+        "cpu_b1": 1.84222,
+        "cpu_b1024": 0.04822
+      },
+      "speedup_vs_scipy": {
+        "cpu_b1": 47.3,
+        "cpu_b1024": 1807.9
+      }
+    }
+  ],
+  "seconds": 663.1
+}

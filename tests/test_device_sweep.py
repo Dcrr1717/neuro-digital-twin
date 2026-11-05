@@ -61,6 +61,16 @@ def test_gpu_prediction_matches_cpu() -> None:
     np.testing.assert_allclose(cpu, gpu, atol=1e-3)
 
 
+def test_cli_overrides() -> None:
+    from neurotwin.__main__ import apply_overrides
+
+    overrides = ["gru.patch=10", "name=x", "eval.min_speedup=1.5"]
+    raw = apply_overrides({"gru": {"hidden": 8}}, overrides)
+    assert raw == {"gru": {"hidden": 8, "patch": 10}, "name": "x", "eval": {"min_speedup": 1.5}}
+    with pytest.raises(SystemExit):
+        apply_overrides({}, ["novalue"])
+
+
 def test_best_patch_prefers_fastest_equally_accurate() -> None:
     def row(p: int, gamma: float, ms: float) -> dict[str, object]:
         return {"patch": p, "val": {"gamma_mean": gamma}, "ms_per_trace": {"cpu_b1": 9.0,

@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.ticker import NullFormatter
 from numpy.typing import NDArray
 
 from .hh import PARAM_NAMES
@@ -345,10 +346,11 @@ def plot_patch_sweep(path: Path, result: dict[str, Any]) -> None:
         a.plot(x, [r[split]["gamma_mean"] for r in rows], marker="o", color=color, label=label)
     a.set_xscale("log")
     a.set_xticks(x, [f"{v:g}" for v in x])
+    a.xaxis.set_minor_formatter(NullFormatter())
     a.set_xlabel("GRU time step = patch length (ms)")
     a.set_ylabel(r"mean coincidence factor $\Gamma$")
     a.set_title("Accuracy vs time step")
-    a.legend(loc="lower left")
+    a.legend(loc="center right")
     keys = list(rows[0]["speedup_vs_scipy"])
     palette = {"cpu": TWIN_C, "cuda": NODE_C}
     styles = ["-", "--", ":", "-."]
@@ -361,6 +363,7 @@ def plot_patch_sweep(path: Path, result: dict[str, Any]) -> None:
     b.set_xscale("log")
     b.set_yscale("log")
     b.set_xticks(x, [f"{v:g}" for v in x])
+    b.xaxis.set_minor_formatter(NullFormatter())
     b.set_xlabel("GRU time step = patch length (ms)")
     b.set_ylabel("speed-up vs scipy LSODA (single model)")
     gpu = result.get("gpu")
