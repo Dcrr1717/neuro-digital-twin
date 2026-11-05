@@ -167,18 +167,23 @@ This is the "universal differential equation" approach of Rackauckas et al.
 A gated recurrent unit (GRU; Cho et al. 2014) learns the **flow map over a
 finite step** instead of the instantaneous vector field:
 
-* The GRU reads the stimulus in *patches* of 5 samples (0.5 ms), with θ
+* The GRU reads the stimulus in *patches* of 10 samples (1 ms), with θ
   appended to every input.
 * A small network maps θ to the initial hidden state, which plays the role of
   the parameter-dependent resting state.
-* A read-out emits the 5 voltage samples of each patch.
-* Training uses backpropagation through the whole 100 ms trace (200 recurrent
+* A read-out emits the 10 voltage samples of each patch.
+* Training uses backpropagation through the whole 100 ms trace (100 recurrent
   steps), with an MSE loss on voltage only.
 
-**Patch length.** The patch length is a free design choice. A sweep
-(RESULTS §9) shows that 1–2 ms patches are as accurate as 0.5 ms patches and
-2–5× faster; at 5 ms, accuracy degrades. Two candidate explanations, neither
-tested here:
+**Patch length.** The patch length is a free design choice. The first version
+of this study used 0.5 ms patches. A sweep (RESULTS §9) showed:
+
+* 1 ms patches are the most accurate and twice as fast, so they became the
+  default;
+* 2 ms patches are another 2.5× faster at ~0.01 lower Γ;
+* at 5 ms, accuracy degrades.
+
+Two candidate explanations, neither tested here:
 
 * fewer recurrent steps shorten back-propagation through time;
 * a 1–2 ms patch spans about one action potential, so a single hidden state
@@ -186,9 +191,9 @@ tested here:
 
 ### 3.3 Choosing between them
 
-Both candidates are trained on the same data with about the same training
-wall-clock (~21 min each on 2 CPU threads in the full configuration). The
-twin exists to be fast, so the selection rule is:
+Both candidates are trained on the same data. In the full configuration the
+GRU takes ~10 min on 1 CPU thread and the neural ODE ~22 min on 2. The twin
+exists to be fast, so the selection rule is:
 
 1. Among candidates whose validation mean Γ is within 0.01 of the best, the
    accuracy is treated as equal.
@@ -197,32 +202,31 @@ twin exists to be fast, so the selection rule is:
 The results ([RESULTS](RESULTS.md)) support three findings.
 
 1. **With little data the GRU is clearly better.** With 800 training traces
-   (small config), the GRU reaches Γ 0.86 against 0.70 for the neural ODE.
+   (small config), the GRU reaches Γ 0.84 against 0.70 for the neural ODE.
    Early in training, long neural-ODE rollouts even diverge.
-2. **With 4 000 traces the neural ODE is at least as accurate.** On the
-   primary metric they tie: validation Γ is 0.948 for the GRU and 0.949 for
-   the neural ODE. On secondary metrics the neural ODE is better:
-   * exact spike count: 0.95 vs 0.88;
-   * sub-threshold RMSE: 0.28 vs 0.47 mV;
-   * held-out test Γ: 0.943 vs 0.928.
-
-   It gets there with 6× fewer weights. It benefits from privileged
-   information (the gating variables) and from a strong inductive bias: it
-   only has to learn a smooth, local vector field.
+2. **With 4 000 traces the neural ODE comes close.**
+   * On validation the GRU leads in Γ (0.967 vs 0.949) and in median voltage
+     error (1.25 vs 1.56 mV).
+   * On the held-out test set they tie in Γ (0.942 vs 0.943).
+   * The neural ODE is better at exact spike counts (0.94 vs 0.89 on test)
+     and sub-threshold voltage.
+   * It gets there with 6× fewer weights. It benefits from privileged
+     information (the gating variables) and from a strong inductive bias: it
+     only has to learn a smooth, local vector field.
 3. **The neural ODE is an order of magnitude slower, for a structural reason.**
    * A learned vector field reproduces the HH time scales, so an explicit
      integrator needs the same small steps as the original model. RK4 on the
      true HH equations diverges at 0.1 ms, so the neural ODE uses 0.05 ms.
-   * That is 2 000 network evaluations per 100 ms trace, against 200 recurrent
+   * That is 2 000 network evaluations per 100 ms trace, against 100 recurrent
      steps for the GRU.
    * Batched, the neural ODE is ~20× faster than scipy LSODA, and the GRU
-     ~170×. That puts the neural ODE no faster than integrating the *true*
-     HH equations with the same vectorised RK4 (4.2 vs 3.9 ms per trace),
+     ~270×. That puts the neural ODE no faster than integrating the *true*
+     HH equations with the same vectorised RK4 (4.8 ms per trace for both),
      so it offers no computational benefit over the model it emulates. For
      a single trace it is 6× *slower* than scipy.
    * A discrete-time model escapes the constraint because it never integrates
      the fast dynamics. It only has to reproduce their net effect over each
-     0.5 ms step.
+     1 ms step.
    * Stiff neural ODEs are a known open problem (Kim et al. 2021; Kidger 2022).
 
 The GRU is therefore the twin. The neural ODE still has merits:
@@ -235,13 +239,15 @@ Implicit or exponential integrators could relax its speed limit. One example
 is gates relaxing towards learned steady states, integrated with Rush-Larsen
 (1978) steps.
 
-**How this rule came about.** The rule was revised during the study, and both
-earlier versions are recorded in RESULTS:
+**How this rule came about.** The rule and the time step were revised
+during the study; RESULTS §2 records every step, including:
 
 * First version, accuracy alone: the neural ODE won by a small margin over a
   GRU that had been given less training time.
 * Second version, a hard 100× speed gate: the GRU then measured 98×, with
   timing noise of ±20 %, and was rejected.
+* Third step, a patch-length sweep: 1 ms GRU steps turned out to be both more
+  accurate and faster than the original 0.5 ms, and became the default.
 
 ## 4. Measuring accuracy the way electrophysiologists do
 

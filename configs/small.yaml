@@ -23,7 +23,7 @@ data:
 gru:
   hidden: 64
   layers: 2
-  patch: 5                # 5 samples = 0.5 ms per recurrent step
+  patch: 10               # 10 samples = 1 ms per recurrent step (see docs/RESULTS.md §9)
   epochs: 20
   batch_size: 32
   lr: 3.0e-3

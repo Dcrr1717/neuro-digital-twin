@@ -3,7 +3,7 @@
 Two families are implemented and compared head-to-head (see docs/RESULTS.md):
 
 * :class:`GRUSurrogate` -- a discrete-time sequence model. A 2-layer GRU reads
-  the stimulus in *patches* of ``patch`` samples (0.5 ms by default) together
+  the stimulus in *patches* of ``patch`` samples (1 ms by default) together
   with the parameters and emits the voltage of the whole patch per step. It
   learns the flow map over a step much longer than the stiff HH time scales.
 * :class:`NeuralODESurrogate` -- a neural ODE ``dx/dt = f_phi(x, I, theta)`` in
@@ -106,7 +106,7 @@ class GRUSurrogate(Surrogate):
     kind = "gru"
 
     def __init__(
-        self, n_params: int = 4, hidden: int = 64, layers: int = 2, patch: int = 5
+        self, n_params: int = 4, hidden: int = 64, layers: int = 2, patch: int = 10
     ) -> None:
         super().__init__()
         self.n_params, self.hidden, self.layers, self.patch = n_params, hidden, layers, patch

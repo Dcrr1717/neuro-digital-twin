@@ -11,16 +11,13 @@ from neurotwin.features import coincidence_factor, spike_times
 from neurotwin.hh import simulate_batch
 from neurotwin.pipeline import load_twin
 
-RESULTS = Path(__file__).resolve().parents[1] / "results"
-# 0.5 ms GRU steps (the reference twin) and 1 ms steps (the faster twin, RESULTS §9).
-TWINS = [RESULTS / "full" / "twin", RESULTS / "full_p10" / "twin"]
+TWIN = Path(__file__).resolve().parents[1] / "results" / "full" / "twin"
 
 
-@pytest.mark.parametrize("path", TWINS, ids=lambda p: p.parent.name)
-def test_shipped_twin_matches_simulator(path: Path) -> None:
-    if not (path / "normalizer.json").exists():
-        pytest.skip("twin not shipped")
-    twin = load_twin(path)
+@pytest.mark.skipif(not (TWIN / "normalizer.json").exists(), reason="no shipped twin")
+def test_shipped_twin_matches_simulator() -> None:
+    twin = load_twin(TWIN)
+    assert all(getattr(m, "patch", None) == 10 for m in twin.members)  # 1 ms steps
     assert len(twin.members) == 5
     dt, n = 0.1, 1000
     theta = np.array([[120.0, 36.0, 0.3, 1.0], [110.0, 40.0, 0.25, 0.9]])

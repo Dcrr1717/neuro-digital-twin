@@ -20,14 +20,14 @@ These come from the full config on a 4-core CPU; details are in
 
 | | |
 |---|---|
-| Twin | ensemble of 5 patch-wise GRUs, conditioned on $\bar g_{Na}, \bar g_K, g_L, C_m$ |
-| Accuracy, held-out parameters in the training range | spike coincidence Γ = 0.93; exact spike count in 88 % of traces; median RMSE 1.7 mV |
-| Accuracy, extrapolated parameters / novel stimuli | Γ = 0.90 / 0.76 |
-| Speed-up vs scipy LSODA | **167×** for one GRU and 26× for the 5-member ensemble (batch 1 024); 8× for a single trace |
-| Speed-up vs a vectorised numpy RK4 of the same equations | 7× for one GRU; about 1× for the ensemble |
-| Uncertainty | ensemble spread ranks errors (Spearman 0.90) and flags 90 % of traces with RMSE > 10 mV while flagging 23 % of traces |
-| Faster twin with 1 ms GRU steps ([RESULTS §9](docs/RESULTS.md#9-larger-gru-time-steps-and-gpu-readiness)) | same in-range accuracy (Γ 0.94, RMSE 1.5 mV), **2× faster**: 319× for one GRU, 56× for the ensemble; slightly weaker extrapolation; shipped in `results/full_p10/twin` |
-| Why a GRU and not a neural ODE? | The neural ODE is as accurate (better on some metrics), but it inherits HH stiffness and is no faster than integrating the real equations |
+| Twin | ensemble of 5 GRUs stepping 1 ms at a time, conditioned on $\bar g_{Na}, \bar g_K, g_L, C_m$ |
+| Accuracy, held-out parameters in the training range | spike coincidence Γ = 0.94; exact spike count in 87 % of traces; median RMSE 1.5 mV |
+| Accuracy, extrapolated parameters / novel stimuli | Γ = 0.88 / 0.74 |
+| Speed-up vs scipy LSODA | **272×** for one GRU and 58× for the 5-member ensemble (batch 1 024); 10–16× for a single trace |
+| Speed-up vs a vectorised numpy RK4 of the same equations | 13× for one GRU; 2.7× for the ensemble |
+| Uncertainty | ensemble spread ranks errors (Spearman 0.93); the flag fires on 26 % of test traces and catches 96 % of those with RMSE > 10 mV |
+| Why 1 ms steps? | A patch-length sweep: 1 ms is the most accurate step and twice as fast as the earlier 0.5 ms; 2 ms is another 2.5× faster at ~0.01 lower Γ ([RESULTS §9](docs/RESULTS.md#9-choosing-the-gru-time-step-and-gpu-readiness)) |
+| Why a GRU and not a neural ODE? | The neural ODE is nearly as accurate (better at exact spike counts), but it inherits HH stiffness and is no faster than integrating the real equations |
 
 ## What is in the box
 
@@ -57,13 +57,13 @@ pip install torch --index-url https://download.pytorch.org/whl/cpu
 pip install -e ".[dev]"
 ```
 
-Run the small default experiment (about 8 minutes on a 4-core CPU):
+Run the small default experiment (about 5 minutes on a 4-core CPU):
 
 ```bash
 python -m neurotwin run --config configs/small.yaml
 ```
 
-Run the full experiment behind `docs/RESULTS.md` (about 1 hour on a 4-core CPU):
+Run the full experiment behind `docs/RESULTS.md` (about 40 minutes on a 4-core CPU):
 
 ```bash
 python -m neurotwin run --config configs/full.yaml --out results/full --figdir docs/figures
@@ -111,19 +111,17 @@ Every model uses the same data, seed and number of epochs. The sweep reports
 accuracy on every held-out split and inference speed. Run in the output
 directory of a finished experiment, it reuses that run's datasets and models.
 
-On the full config, 1 ms and 2 ms steps are as accurate as the default 0.5 ms
-step and 2× and 5× faster; 5 ms steps lose accuracy. See
-[RESULTS §9](docs/RESULTS.md#9-larger-gru-time-steps-and-gpu-readiness).
+On the full config, 1 ms and 2 ms steps are as accurate as the earlier 0.5 ms
+step and 2× and 5× faster; 5 ms steps lose accuracy. 1 ms is now the default.
+See [RESULTS §9](docs/RESULTS.md#9-choosing-the-gru-time-step-and-gpu-readiness).
 Config entries can be overridden on the command line, for example
 `--set gru.patch=10`.
 
 ### Using a trained twin from Python
 
-The 5-member ensemble from the full configuration is committed in
-`results/full/twin` (4 MB). The faster 1 ms-step twin of RESULTS §9 is in
-`results/full_p10/twin`, and both load the same way. They are valid for
-parameters inside the training box and for 100 ms traces at 0.1 ms resolution
-that start from rest.
+The 5-member ensemble from the full configuration (1 ms steps) is committed
+in `results/full/twin` (4 MB). It is valid for parameters inside the training
+box and for 100 ms traces at 0.1 ms resolution that start from rest.
 
 ```python
 import numpy as np
@@ -142,7 +140,7 @@ print("ensemble spread (mV):", sigma.mean())  # large spread -> re-check with th
 The tests run fully offline in about a minute on a 4-core CPU.
 
 ```bash
-ruff check src tests
+ruff check src tests scripts
 ```
 
 ```bash

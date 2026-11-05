@@ -68,7 +68,7 @@ class DataConfig:
 class GRUConfig:
     hidden: int = 64
     layers: int = 2
-    patch: int = 5
+    patch: int = 10  # samples per recurrent step (1 ms at dt = 0.1 ms)
     epochs: int = 15
     batch_size: int = 32
     lr: float = 3e-3
