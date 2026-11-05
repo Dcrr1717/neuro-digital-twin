@@ -175,6 +175,15 @@ finite step** instead of the instantaneous vector field:
 * Training uses backpropagation through the whole 100 ms trace (200 recurrent
   steps), with an MSE loss on voltage only.
 
+**Patch length.** The patch length is a free design choice. A sweep
+(RESULTS §9) shows that 1–2 ms patches are as accurate as 0.5 ms patches and
+2–5× faster; at 5 ms, accuracy degrades. Two candidate explanations, neither
+tested here:
+
+* fewer recurrent steps shorten back-propagation through time;
+* a 1–2 ms patch spans about one action potential, so a single hidden state
+  can emit the whole waveform.
+
 ### 3.3 Choosing between them
 
 Both candidates are trained on the same data with about the same training

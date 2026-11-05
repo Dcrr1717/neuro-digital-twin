@@ -1,0 +1,282 @@
+[1/6] simulating datasets (full_p10; networks on cpu)
+  train=4000, val=300, test_id=300, test_ood_param=300, test_ood_stim=300 traces (7.8 s; stiff LSODA fallbacks: train=1, val=0, test_id=0, test_ood_param=0, test_ood_stim=0)
+[2/6] training candidate surrogates (GRU, neural ODE)
+  loaded cached GRU (seed 1) from results/full_p10/models/gru-seed1-efbb4575bf.pt
+  loaded cached neural ODE (seed 1) from results/full_p10/models/node-seed1-0b14eaae3e.pt
+  GRU: val Gamma=0.967 RMSE=1.25 mV (629 s, 205834 params)
+  neural ODE: val Gamma=0.949 RMSE=1.56 mV (1306 s, 35976 params)
+  GRU: batched inference 195x faster than scipy (requirement: >= 100x)
+  neural ODE: batched inference 14x faster than scipy (requirement: >= 100x)
+  selected: GRU
+[3/6] training ensemble of 5 x GRU
+  training 4 models in 4 processes x 1 threads
+  gru seed=2 epoch 1/60 train=0.9678 val=0.8948
+  gru seed=3 epoch 1/60 train=0.9748 val=0.9017
+  gru seed=4 epoch 1/60 train=0.9690 val=0.8937
+  gru seed=5 epoch 1/60 train=0.9698 val=0.8930
+  gru seed=2 epoch 2/60 train=0.8021 val=0.6016
+  gru seed=3 epoch 2/60 train=0.7969 val=0.5894
+  gru seed=4 epoch 2/60 train=0.7929 val=0.5943
+  gru seed=5 epoch 2/60 train=0.7985 val=0.5981
+  gru seed=2 epoch 3/60 train=0.4823 val=0.3413
+  gru seed=3 epoch 3/60 train=0.4861 val=0.3440
+  gru seed=4 epoch 3/60 train=0.4799 val=0.3475
+  gru seed=5 epoch 3/60 train=0.4843 val=0.3559
+  gru seed=2 epoch 4/60 train=0.3387 val=0.3212
+  gru seed=3 epoch 4/60 train=0.3327 val=0.2842
+  gru seed=4 epoch 4/60 train=0.3426 val=0.3475
+  gru seed=5 epoch 4/60 train=0.3242 val=0.2765
+  gru seed=2 epoch 5/60 train=0.3135 val=0.2600
+  gru seed=3 epoch 5/60 train=0.3244 val=0.3143
+  gru seed=4 epoch 5/60 train=0.3007 val=0.3453
+  gru seed=5 epoch 5/60 train=0.3003 val=0.3223
+  gru seed=2 epoch 6/60 train=0.2934 val=0.3248
+  gru seed=3 epoch 6/60 train=0.2807 val=0.3043
+  gru seed=4 epoch 6/60 train=0.3179 val=0.3204
+  gru seed=5 epoch 6/60 train=0.2913 val=0.2226
+  gru seed=2 epoch 7/60 train=0.2832 val=0.2323
+  gru seed=3 epoch 7/60 train=0.2901 val=0.2581
+  gru seed=4 epoch 7/60 train=0.3173 val=0.3359
+  gru seed=5 epoch 7/60 train=0.2840 val=0.1939
+  gru seed=2 epoch 8/60 train=0.2682 val=0.2553
+  gru seed=3 epoch 8/60 train=0.2940 val=0.3991
+  gru seed=4 epoch 8/60 train=0.3140 val=0.3512
+  gru seed=5 epoch 8/60 train=0.2770 val=0.2847
+  gru seed=2 epoch 9/60 train=0.2735 val=0.2356
+  gru seed=3 epoch 9/60 train=0.3006 val=0.2587
+  gru seed=4 epoch 9/60 train=0.2914 val=0.2864
+  gru seed=5 epoch 9/60 train=0.2656 val=0.1732
+  gru seed=2 epoch 10/60 train=0.2608 val=0.1740
+  gru seed=3 epoch 10/60 train=0.2709 val=0.4160
+  gru seed=4 epoch 10/60 train=0.2904 val=0.1935
+  gru seed=5 epoch 10/60 train=0.2568 val=0.1760
+  gru seed=2 epoch 11/60 train=0.2390 val=0.1868
+  gru seed=3 epoch 11/60 train=0.3075 val=0.3382
+  gru seed=4 epoch 11/60 train=0.2888 val=0.2161
+  gru seed=5 epoch 11/60 train=0.2353 val=0.1717
+  gru seed=3 epoch 12/60 train=0.2733 val=0.2239
+  gru seed=2 epoch 12/60 train=0.2701 val=0.2059
+  gru seed=4 epoch 12/60 train=0.2549 val=0.2777
+  gru seed=5 epoch 12/60 train=0.2327 val=0.2673
+  gru seed=3 epoch 13/60 train=0.2281 val=0.1721
+  gru seed=2 epoch 13/60 train=0.2252 val=0.2281
+  gru seed=4 epoch 13/60 train=0.2515 val=0.2201
+  gru seed=5 epoch 13/60 train=0.2604 val=0.3800
+  gru seed=3 epoch 14/60 train=0.2393 val=0.1880
+  gru seed=2 epoch 14/60 train=0.2297 val=0.2176
+  gru seed=4 epoch 14/60 train=0.2301 val=0.1580
+  gru seed=5 epoch 14/60 train=0.2338 val=0.2599
+  gru seed=3 epoch 15/60 train=0.2340 val=0.2371
+  gru seed=2 epoch 15/60 train=0.2116 val=0.2502
+  gru seed=4 epoch 15/60 train=0.2300 val=0.1485
+  gru seed=5 epoch 15/60 train=0.2249 val=0.2117
+  gru seed=3 epoch 16/60 train=0.2507 val=0.2068
+  gru seed=2 epoch 16/60 train=0.1828 val=0.1543
+  gru seed=4 epoch 16/60 train=0.2351 val=0.2879
+  gru seed=5 epoch 16/60 train=0.2124 val=0.2030
+  gru seed=3 epoch 17/60 train=0.2071 val=0.2750
+  gru seed=2 epoch 17/60 train=0.2109 val=0.2084
+  gru seed=4 epoch 17/60 train=0.2210 val=0.1482
+  gru seed=5 epoch 17/60 train=0.2118 val=0.1707
+  gru seed=3 epoch 18/60 train=0.2259 val=0.1650
+  gru seed=2 epoch 18/60 train=0.2133 val=0.3292
+  gru seed=4 epoch 18/60 train=0.2314 val=0.1661
+  gru seed=5 epoch 18/60 train=0.2149 val=0.1330
+  gru seed=3 epoch 19/60 train=0.2105 val=0.1540
+  gru seed=2 epoch 19/60 train=0.2141 val=0.1609
+  gru seed=4 epoch 19/60 train=0.2036 val=0.2182
+  gru seed=5 epoch 19/60 train=0.1789 val=0.1694
+  gru seed=3 epoch 20/60 train=0.2151 val=0.2538
+  gru seed=2 epoch 20/60 train=0.1906 val=0.1640
+  gru seed=4 epoch 20/60 train=0.1967 val=0.1574
+  gru seed=5 epoch 20/60 train=0.1752 val=0.1605
+  gru seed=3 epoch 21/60 train=0.2094 val=0.1987
+  gru seed=2 epoch 21/60 train=0.1803 val=0.1309
+  gru seed=4 epoch 21/60 train=0.1932 val=0.1478
+  gru seed=5 epoch 21/60 train=0.1805 val=0.1322
+  gru seed=3 epoch 22/60 train=0.2031 val=0.2111
+  gru seed=2 epoch 22/60 train=0.1966 val=0.1951
+  gru seed=4 epoch 22/60 train=0.1956 val=0.1927
+  gru seed=5 epoch 22/60 train=0.1791 val=0.1629
+  gru seed=3 epoch 23/60 train=0.1693 val=0.2090
+  gru seed=2 epoch 23/60 train=0.1711 val=0.1409
+  gru seed=4 epoch 23/60 train=0.1828 val=0.2145
+  gru seed=5 epoch 23/60 train=0.1632 val=0.1539
+  gru seed=3 epoch 24/60 train=0.1901 val=0.2049
+  gru seed=2 epoch 24/60 train=0.1608 val=0.1467
+  gru seed=4 epoch 24/60 train=0.1804 val=0.1682
+  gru seed=5 epoch 24/60 train=0.1740 val=0.1469
+  gru seed=3 epoch 25/60 train=0.1672 val=0.2542
+  gru seed=2 epoch 25/60 train=0.1708 val=0.1742
+  gru seed=4 epoch 25/60 train=0.1706 val=0.1108
+  gru seed=5 epoch 25/60 train=0.1698 val=0.1640
+  gru seed=3 epoch 26/60 train=0.1756 val=0.1382
+  gru seed=2 epoch 26/60 train=0.1709 val=0.1283
+  gru seed=4 epoch 26/60 train=0.1728 val=0.2800
+  gru seed=5 epoch 26/60 train=0.1412 val=0.1228
+  gru seed=3 epoch 27/60 train=0.1659 val=0.1375
+  gru seed=2 epoch 27/60 train=0.1572 val=0.2113
+  gru seed=4 epoch 27/60 train=0.1457 val=0.1241
+  gru seed=5 epoch 27/60 train=0.1319 val=0.1273
+  gru seed=3 epoch 28/60 train=0.1659 val=0.1536
+  gru seed=4 epoch 28/60 train=0.1504 val=0.1141
+  gru seed=2 epoch 28/60 train=0.1495 val=0.1589
+  gru seed=5 epoch 28/60 train=0.1610 val=0.1202
+  gru seed=3 epoch 29/60 train=0.1448 val=0.1341
+  gru seed=4 epoch 29/60 train=0.1592 val=0.1417
+  gru seed=2 epoch 29/60 train=0.1396 val=0.1277
+  gru seed=5 epoch 29/60 train=0.1245 val=0.0854
+  gru seed=3 epoch 30/60 train=0.1424 val=0.1826
+  gru seed=4 epoch 30/60 train=0.1528 val=0.1133
+  gru seed=2 epoch 30/60 train=0.1406 val=0.1196
+  gru seed=5 epoch 30/60 train=0.1298 val=0.0994
+  gru seed=3 epoch 31/60 train=0.1391 val=0.1075
+  gru seed=4 epoch 31/60 train=0.1493 val=0.1074
+  gru seed=5 epoch 31/60 train=0.1306 val=0.0822
+  gru seed=2 epoch 31/60 train=0.1262 val=0.1097
+  gru seed=3 epoch 32/60 train=0.1385 val=0.1595
+  gru seed=4 epoch 32/60 train=0.1365 val=0.1004
+  gru seed=2 epoch 32/60 train=0.1118 val=0.1393
+  gru seed=5 epoch 32/60 train=0.1339 val=0.2149
+  gru seed=3 epoch 33/60 train=0.1328 val=0.1222
+  gru seed=4 epoch 33/60 train=0.1324 val=0.1339
+  gru seed=2 epoch 33/60 train=0.1337 val=0.1082
+  gru seed=5 epoch 33/60 train=0.1178 val=0.0858
+  gru seed=3 epoch 34/60 train=0.1298 val=0.1086
+  gru seed=4 epoch 34/60 train=0.1085 val=0.1185
+  gru seed=2 epoch 34/60 train=0.1128 val=0.0997
+  gru seed=5 epoch 34/60 train=0.1044 val=0.1184
+  gru seed=4 epoch 35/60 train=0.1240 val=0.0939
+  gru seed=3 epoch 35/60 train=0.1356 val=0.1100
+  gru seed=2 epoch 35/60 train=0.0988 val=0.0965
+  gru seed=5 epoch 35/60 train=0.1261 val=0.0981
+  gru seed=4 epoch 36/60 train=0.0976 val=0.0921
+  gru seed=3 epoch 36/60 train=0.1131 val=0.1115
+  gru seed=2 epoch 36/60 train=0.0992 val=0.0837
+  gru seed=5 epoch 36/60 train=0.0984 val=0.0929
+  gru seed=4 epoch 37/60 train=0.1069 val=0.1044
+  gru seed=3 epoch 37/60 train=0.1027 val=0.1015
+  gru seed=2 epoch 37/60 train=0.1059 val=0.1073
+  gru seed=5 epoch 37/60 train=0.0878 val=0.0833
+  gru seed=4 epoch 38/60 train=0.1073 val=0.1017
+  gru seed=5 epoch 38/60 train=0.0973 val=0.1804
+  gru seed=3 epoch 38/60 train=0.0982 val=0.1412
+  gru seed=2 epoch 38/60 train=0.0886 val=0.0812
+  gru seed=4 epoch 39/60 train=0.0915 val=0.0900
+  gru seed=3 epoch 39/60 train=0.1170 val=0.1009
+  gru seed=5 epoch 39/60 train=0.1049 val=0.1757
+  gru seed=2 epoch 39/60 train=0.1048 val=0.0762
+  gru seed=4 epoch 40/60 train=0.0801 val=0.0626
+  gru seed=5 epoch 40/60 train=0.0895 val=0.0784
+  gru seed=3 epoch 40/60 train=0.1171 val=0.0867
+  gru seed=2 epoch 40/60 train=0.1228 val=0.0672
+  gru seed=4 epoch 41/60 train=0.0782 val=0.0729
+  gru seed=5 epoch 41/60 train=0.0764 val=0.0683
+  gru seed=3 epoch 41/60 train=0.0849 val=0.0855
+  gru seed=2 epoch 41/60 train=0.0799 val=0.0545
+  gru seed=4 epoch 42/60 train=0.0952 val=0.0666
+  gru seed=5 epoch 42/60 train=0.0820 val=0.0622
+  gru seed=3 epoch 42/60 train=0.0951 val=0.0801
+  gru seed=2 epoch 42/60 train=0.0788 val=0.0781
+  gru seed=4 epoch 43/60 train=0.0740 val=0.0860
+  gru seed=5 epoch 43/60 train=0.0728 val=0.0665
+  gru seed=3 epoch 43/60 train=0.0791 val=0.0749
+  gru seed=2 epoch 43/60 train=0.0735 val=0.0758
+  gru seed=5 epoch 44/60 train=0.0772 val=0.0559
+  gru seed=4 epoch 44/60 train=0.0759 val=0.0690
+  gru seed=3 epoch 44/60 train=0.0733 val=0.0966
+  gru seed=2 epoch 44/60 train=0.0713 val=0.0558
+  gru seed=5 epoch 45/60 train=0.0559 val=0.0503
+  gru seed=4 epoch 45/60 train=0.0659 val=0.0585
+  gru seed=3 epoch 45/60 train=0.0725 val=0.0672
+  gru seed=2 epoch 45/60 train=0.0665 val=0.0547
+  gru seed=5 epoch 46/60 train=0.0512 val=0.0505
+  gru seed=4 epoch 46/60 train=0.0680 val=0.0614
+  gru seed=3 epoch 46/60 train=0.0693 val=0.0940
+  gru seed=2 epoch 46/60 train=0.0640 val=0.0486
+  gru seed=5 epoch 47/60 train=0.0487 val=0.0538
+  gru seed=4 epoch 47/60 train=0.0569 val=0.0725
+  gru seed=3 epoch 47/60 train=0.0725 val=0.0649
+  gru seed=2 epoch 47/60 train=0.0524 val=0.0527
+  gru seed=5 epoch 48/60 train=0.0513 val=0.0589
+  gru seed=4 epoch 48/60 train=0.0566 val=0.0667
+  gru seed=3 epoch 48/60 train=0.0724 val=0.0685
+  gru seed=2 epoch 48/60 train=0.0545 val=0.0522
+  gru seed=5 epoch 49/60 train=0.0456 val=0.0471
+  gru seed=4 epoch 49/60 train=0.0568 val=0.0655
+  gru seed=3 epoch 49/60 train=0.0628 val=0.0540
+  gru seed=2 epoch 49/60 train=0.0478 val=0.0489
+  gru seed=5 epoch 50/60 train=0.0415 val=0.0468
+  gru seed=4 epoch 50/60 train=0.0479 val=0.0465
+  gru seed=3 epoch 50/60 train=0.0506 val=0.0590
+  gru seed=2 epoch 50/60 train=0.0395 val=0.0433
+  gru seed=5 epoch 51/60 train=0.0371 val=0.0414
+  gru seed=4 epoch 51/60 train=0.0482 val=0.0492
+  gru seed=3 epoch 51/60 train=0.0458 val=0.0597
+  gru seed=2 epoch 51/60 train=0.0432 val=0.0452
+  gru seed=5 epoch 52/60 train=0.0340 val=0.0433
+  gru seed=4 epoch 52/60 train=0.0393 val=0.0429
+  gru seed=3 epoch 52/60 train=0.0450 val=0.0672
+  gru seed=2 epoch 52/60 train=0.0378 val=0.0429
+  gru seed=5 epoch 53/60 train=0.0341 val=0.0452
+  gru seed=4 epoch 53/60 train=0.0411 val=0.0487
+  gru seed=3 epoch 53/60 train=0.0444 val=0.0655
+  gru seed=2 epoch 53/60 train=0.0335 val=0.0399
+  gru seed=5 epoch 54/60 train=0.0341 val=0.0427
+  gru seed=3 epoch 54/60 train=0.0408 val=0.0468
+  gru seed=4 epoch 54/60 train=0.0374 val=0.0413
+  gru seed=2 epoch 54/60 train=0.0331 val=0.0395
+  gru seed=5 epoch 55/60 train=0.0299 val=0.0421
+  gru seed=3 epoch 55/60 train=0.0389 val=0.0495
+  gru seed=4 epoch 55/60 train=0.0343 val=0.0405
+  gru seed=2 epoch 55/60 train=0.0311 val=0.0374
+  gru seed=5 epoch 56/60 train=0.0285 val=0.0442
+  gru seed=3 epoch 56/60 train=0.0382 val=0.0497
+  gru seed=4 epoch 56/60 train=0.0332 val=0.0391
+  gru seed=2 epoch 56/60 train=0.0288 val=0.0399
+  gru seed=5 epoch 57/60 train=0.0269 val=0.0428
+  gru seed=3 epoch 57/60 train=0.0354 val=0.0445
+  gru seed=4 epoch 57/60 train=0.0313 val=0.0398
+  gru seed=2 epoch 57/60 train=0.0284 val=0.0381
+  gru seed=5 epoch 58/60 train=0.0262 val=0.0420
+  gru seed=4 epoch 58/60 train=0.0317 val=0.0392
+  gru seed=3 epoch 58/60 train=0.0349 val=0.0436
+  gru seed=2 epoch 58/60 train=0.0278 val=0.0383
+  gru seed=5 epoch 59/60 train=0.0253 val=0.0422
+  gru seed=3 epoch 59/60 train=0.0340 val=0.0447
+  gru seed=4 epoch 59/60 train=0.0306 val=0.0387
+  gru seed=2 epoch 59/60 train=0.0270 val=0.0386
+  gru seed=5 epoch 60/60 train=0.0253 val=0.0420
+  gru seed=3 epoch 60/60 train=0.0341 val=0.0446
+  gru seed=4 epoch 60/60 train=0.0303 val=0.0388
+  gru seed=2 epoch 60/60 train=0.0269 val=0.0385
+[4/6] evaluating on held-out splits
+  val: Gamma=0.951 RMSE(median)=1.35 mV count-exact=0.91 u(median)=0.47 mV
+  test_id: Gamma=0.938 RMSE(median)=1.47 mV count-exact=0.87 u(median)=0.54 mV
+  test_ood_param: Gamma=0.883 RMSE(median)=2.40 mV count-exact=0.82 u(median)=0.70 mV
+  test_ood_stim: Gamma=0.737 RMSE(median)=3.68 mV count-exact=0.56 u(median)=1.17 mV
+  uncertainty: AUROC(ID vs OOD params)=0.624 AUROC(ID vs OOD stim)=0.808 flag rates={'test_id': 0.097, 'test_ood_param': 0.24, 'test_ood_stim': 0.437}
+[5/6] benchmarking speed
+  scipy LSODA: 95.9 ms/trace
+  numpy RK4 (batch 1024): 4.09 ms/trace
+  GRU_b1_t1: 6.645 ms/trace
+  GRU_b64_t1: 0.592 ms/trace
+  GRU_b1024_t1: 0.851 ms/trace
+  neural ODE_b1_t1: 574.869 ms/trace
+  neural ODE_b64_t1: 21.225 ms/trace
+  neural ODE_b1024_t1: 11.380 ms/trace
+  ensemble5_b1024_t1: 4.838 ms/trace
+  GRU_b1_t4: 8.001 ms/trace
+  GRU_b64_t4: 0.555 ms/trace
+  GRU_b1024_t4: 0.301 ms/trace
+  neural ODE_b1_t4: 680.943 ms/trace
+  neural ODE_b64_t4: 24.589 ms/trace
+  neural ODE_b1024_t4: 4.593 ms/trace
+  ensemble5_b1024_t4: 1.711 ms/trace
+  RK4 dataset integrator vs LSODA(rtol=1e-9): max |dV|=1.58e-02 mV, Gamma=1.000
+[6/6] writing metrics, report and figures
+done in 881 s -> results/full_p10
+
+real	14m45.203s
+user	49m58.029s
+sys	1m10.048s

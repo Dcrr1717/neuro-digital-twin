@@ -26,6 +26,7 @@ These come from the full config on a 4-core CPU; details are in
 | Speed-up vs scipy LSODA | **167×** for one GRU and 26× for the 5-member ensemble (batch 1 024); 8× for a single trace |
 | Speed-up vs a vectorised numpy RK4 of the same equations | 7× for one GRU; about 1× for the ensemble |
 | Uncertainty | ensemble spread ranks errors (Spearman 0.90) and flags 90 % of traces with RMSE > 10 mV while flagging 23 % of traces |
+| Faster twin with 1 ms GRU steps ([RESULTS §9](docs/RESULTS.md#9-larger-gru-time-steps-and-gpu-readiness)) | same in-range accuracy (Γ 0.94, RMSE 1.5 mV), **2× faster**: 319× for one GRU, 56× for the ensemble; slightly weaker extrapolation; shipped in `results/full_p10/twin` |
 | Why a GRU and not a neural ODE? | The neural ODE is as accurate (better on some metrics), but it inherits HH stiffness and is no faster than integrating the real equations |
 
 ## What is in the box
@@ -110,11 +111,19 @@ Every model uses the same data, seed and number of epochs. The sweep reports
 accuracy on every held-out split and inference speed. Run in the output
 directory of a finished experiment, it reuses that run's datasets and models.
 
+On the full config, 1 ms and 2 ms steps are as accurate as the default 0.5 ms
+step and 2× and 5× faster; 5 ms steps lose accuracy. See
+[RESULTS §9](docs/RESULTS.md#9-larger-gru-time-steps-and-gpu-readiness).
+Config entries can be overridden on the command line, for example
+`--set gru.patch=10`.
+
 ### Using a trained twin from Python
 
 The 5-member ensemble from the full configuration is committed in
-`results/full/twin` (4 MB). It is valid for parameters inside the training box
-and 100 ms traces at 0.1 ms resolution that start from rest.
+`results/full/twin` (4 MB). The faster 1 ms-step twin of RESULTS §9 is in
+`results/full_p10/twin`, and both load the same way. They are valid for
+parameters inside the training box and for 100 ms traces at 0.1 ms resolution
+that start from rest.
 
 ```python
 import numpy as np

@@ -11,12 +11,16 @@ from neurotwin.features import coincidence_factor, spike_times
 from neurotwin.hh import simulate_batch
 from neurotwin.pipeline import load_twin
 
-TWIN = Path(__file__).resolve().parents[1] / "results" / "full" / "twin"
+RESULTS = Path(__file__).resolve().parents[1] / "results"
+# 0.5 ms GRU steps (the reference twin) and 1 ms steps (the faster twin, RESULTS §9).
+TWINS = [RESULTS / "full" / "twin", RESULTS / "full_p10" / "twin"]
 
 
-@pytest.mark.skipif(not (TWIN / "normalizer.json").exists(), reason="no shipped twin")
-def test_shipped_twin_matches_simulator() -> None:
-    twin = load_twin(TWIN)
+@pytest.mark.parametrize("path", TWINS, ids=lambda p: p.parent.name)
+def test_shipped_twin_matches_simulator(path: Path) -> None:
+    if not (path / "normalizer.json").exists():
+        pytest.skip("twin not shipped")
+    twin = load_twin(path)
     assert len(twin.members) == 5
     dt, n = 0.1, 1000
     theta = np.array([[120.0, 36.0, 0.3, 1.0], [110.0, 40.0, 0.25, 0.9]])
@@ -30,4 +34,4 @@ def test_shipped_twin_matches_simulator() -> None:
             gamma = coincidence_factor(t_true, spike_times(m, dt), 2.0, n * dt)
             assert gamma > 0.8
         assert np.median(np.abs(mean[k] - truth[k])) < 2.0  # mV
-    assert np.all(std.mean(axis=1) < 1.23)  # not flagged as extrapolation
+    assert np.all(std.mean(axis=1) < 1.2)  # well below either twin's extrapolation flag

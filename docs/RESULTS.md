@@ -393,3 +393,132 @@ The numbers for this configuration are in
 [`results/small/metrics.json`](../results/small/metrics.json) and
 [`results/small/report.md`](../results/small/report.md). CI uploads the same
 files, plus figures, as the `small-results` artifact of every run.
+
+## 9. Larger GRU time steps and GPU readiness
+
+**No GPU run yet.** This study's machine is CPU-only: no CUDA device, no GPU
+cloud environment, no cloud credentials. Everything below was therefore
+measured on the same 4-core CPU as §1–8.
+
+The code is GPU-ready, so the GPU experiment is one command on any CUDA
+machine:
+
+```bash
+python -m neurotwin sweep --config configs/full.yaml --device cuda --out results/full_gpu --patches 5 10 20 50
+```
+
+```bash
+python -m neurotwin run --config configs/full.yaml --device cuda --set gru.patch=10 --set name=full_gpu_p10 --out results/full_gpu
+```
+
+On a GPU these commands add GPU timings at batch sizes 1, 1 024 and 8 192 to
+the speed table and the sweep, next to the CPU timings. The GPU-only tests in
+`tests/test_device_sweep.py` are skipped on CPU machines and have not yet run.
+
+### 9.1 Patch-length sweep
+
+Each GRU step reads and writes a *patch* of samples. §1–8 use 5 samples
+(0.5 ms) per step. Longer patches mean fewer sequential steps per trace.
+
+The sweep trains one GRU per patch length on identical terms:
+
+* the same 4 000 training traces;
+* the same seed and 60 epochs;
+* the same architecture (2 × 128 hidden units).
+
+Accuracy is measured on every held-out split ([`results/full/patch_sweep.json`](../results/full/patch_sweep.json)).
+The command:
+
+```bash
+python -m neurotwin sweep --config configs/full.yaml --out results/full --patches 5 10 20 50
+```
+
+![patch sweep](figures/patch_sweep.png)
+
+| GRU step | steps / trace | val Γ | test Γ | test exact count | test median RMSE (mV) | extrap. params Γ | novel stimuli Γ | CPU batch 1 (ms / trace) | CPU batch 1 024 (ms / trace) | speed-up vs scipy, batch 1 024 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 0.5 ms | 200 | 0.948 | 0.927 | 0.89 | 1.80 | 0.895 | 0.795 | 11.8 | 0.70 | 125× |
+| **1 ms** | 100 | **0.967** | **0.942** | **0.89** | **1.40** | 0.905 | 0.771 | 9.9 | 0.34 | 254× |
+| 2 ms | 50 | 0.957 | 0.933 | 0.87 | 1.90 | **0.921** | 0.785 | 3.7 | 0.14 | 639× |
+| 5 ms | 20 | 0.918 | 0.905 | 0.78 | 3.49 | 0.886 | 0.730 | 1.8 | 0.05 | 1 808× |
+
+*Single models, 4 CPU threads. Speed-ups are against scipy LSODA measured in
+the same run (87 ms per trace).*
+
+**Speed.** Batched inference time is nearly proportional to the number of
+recurrent steps. Training time also halves with each doubling: 1 244 s for the
+0.5 ms model (on 2 threads), against 629 s, 320 s and 140 s for the 1, 2 and
+5 ms models (each on 1 thread).
+
+**Accuracy.** Longer steps do *not* cost accuracy up to 2 ms; 1 ms is the most
+accurate step on every in-range metric. A plausible reason is optimisation:
+
+* With 1 ms steps, back-propagation runs through 100 recurrent steps
+  instead of 200, so gradients travel half as far.
+* A 1–2 ms patch spans roughly one action potential, so the read-out can
+  emit the whole spike waveform from a single hidden state.
+
+At 5 ms the accuracy drops: Γ 0.918, and the RMSE doubles. One step then has
+to place up to one spike anywhere inside a 5 ms window.
+
+**Selection.** The tie-aware rule of §2 picks **1 ms**. That rule: the fastest
+model whose validation Γ is within 0.01 of the best, decided before the sweep
+was run. The 2 ms model misses the tie window by 0.0002 (Γ 0.9565 vs 0.9667).
+It is a defensible faster choice whenever another factor of 2.5 in speed
+matters more than ~0.01 in Γ.
+
+### 9.2 A faster twin: ensemble with 1 ms steps
+
+The full pipeline was rerun with the 1 ms step:
+
+```bash
+python -m neurotwin run --config configs/full.yaml --set gru.patch=10 --set name=full_p10 --out results/full_p10
+```
+
+* Datasets and seeds are identical.
+* The neural ODE candidate and the first GRU were reused from the cache.
+* With 1 ms steps the GRU beats the neural ODE on validation outright:
+  Γ 0.967 vs 0.949, median RMSE 1.25 vs 1.56 mV.
+* The new 5-member twin is committed in
+  [`results/full_p10/twin`](../results/full_p10/twin). Its metrics are in
+  [`results/full_p10/metrics.json`](../results/full_p10/metrics.json).
+
+| ensemble of 5 GRUs | 0.5 ms steps (§1–8) | 1 ms steps |
+|---|---|---|
+| test_id: mean Γ / exact spike count | 0.934 / 0.877 | 0.938 / 0.873 |
+| test_id: median RMSE / sub-threshold RMSE (mV) | 1.70 / 0.48 | **1.47 / 0.34** |
+| ramps (weakest training family), mean Γ | 0.761 | **0.797** |
+| extrapolated params: mean Γ / median RMSE (mV) | **0.900** / 2.60 | 0.883 / **2.40** |
+| novel stimuli: mean Γ (strong steps) | **0.755 (0.474)** | 0.737 (0.431) |
+| ±2σ coverage, test_id | 0.73 | **0.86** |
+| Spearman(σ, RMSE), pooled test splits | 0.90 | **0.93** |
+| AUROC σ: extrapolated params / novel stimuli | 0.64 / 0.82 | 0.62 / 0.81 |
+| flag rate: test_id / extrapolated params / novel stimuli | 9.7 / 24 / 36 % | 9.7 / 24 / 44 % |
+| one GRU, batch 1 024, 4 threads | 0.54 ms (167×) | **0.30 ms (319×)** |
+| ensemble, batch 1 024, 4 threads | 3.45 ms (26×) | **1.71 ms (56×)** |
+| one GRU, single trace | 11.2 ms (8×) | **6.6 ms (14×)** |
+| vs vectorised numpy RK4: one GRU / ensemble | 7.2× / 1.1× | **13.6× / 2.4×** |
+| training time per member (1 thread / 2 threads) | ~1 300 s (1 thread) | ~670 s (1 thread) |
+
+Speed-ups are against scipy measured in each run (90 and 96 ms per trace).
+Compare the ms per trace directly: the 1 ms twin is 1.8–2.0× faster at every
+batch size.
+
+**Verdict.**
+
+* *In range*, the 1 ms twin is at least as accurate and about twice as fast.
+  Its median voltage error is 14 % lower and its sub-threshold error 29 %
+  lower.
+* Its uncertainty is better calibrated: ±2σ covers 86 % of samples instead
+  of 73 %.
+* It *extrapolates* slightly worse: Γ −0.017 on extrapolated parameters and
+  −0.018 on novel stimuli. Both differences are near the ±0.01 sampling noise
+  of a 300-trace mean. Those traces are flagged about as often (extrapolated
+  parameters, 24 %) or more often (novel stimuli, 44 % vs 36 %).
+* It is the better twin for fast in-range use, which is its main purpose.
+* §1–8 keep the 0.5 ms twin as the documented reference. Both twins are
+  shipped and checked against the simulator in `tests/test_shipped_twin.py`.
+
+Even at 2.4× the vectorised numpy integrator, the ensemble is still a modest
+gain *on a CPU*. Large batches on a GPU are where a recurrent surrogate should
+pull away further. That is the experiment the commands above are for.

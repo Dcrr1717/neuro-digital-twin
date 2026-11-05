@@ -13,6 +13,7 @@ results/*/data/
 results/*/twin/
 # ...except the trained twin of the full config, shipped for direct use.
 !results/full/twin/
+!results/full_p10/twin/
 results/*/models/
 results/*/figures/
 # Logs of runs in progress (the final log of a committed run is added explicitly).
