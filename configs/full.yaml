@@ -24,8 +24,8 @@ data:
 gru:
   hidden: 128
   layers: 2
-  patch: 5
-  epochs: 60             # ~ the neural ODE's training wall-clock (equal budget)
+  patch: 10              # 10 samples = 1 ms per recurrent step (see docs/RESULTS.md §9)
+  epochs: 60             # same epochs as the 0.5 ms model that matched the neural ODE's budget
   batch_size: 64
   lr: 2.0e-3
 

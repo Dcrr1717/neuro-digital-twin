@@ -39,7 +39,10 @@ from .models import (
     Surrogate,
     build_model,
     count_parameters,
+    cpu_state_dict,
+    device_label,
     predict_mv,
+    resolve_device,
 )
 from .train import TrainResult, train_gru, train_node
 
@@ -50,9 +53,10 @@ KIND_NAME = {"gru": "GRU", "node": "neural ODE"}
 
 def _train(kind: str, data: dict[str, Dataset], norm: Normalizer, cfg: Config, seed: int,
            log: Callable[[str], None]) -> TrainResult:
+    device = resolve_device(cfg.device)
     if kind == "gru":
-        return train_gru(data["train"], data["val"], norm, cfg.gru, seed, log)
-    return train_node(data["train"], data["val"], norm, cfg.node, seed, log)
+        return train_gru(data["train"], data["val"], norm, cfg.gru, seed, log, device=device)
+    return train_node(data["train"], data["val"], norm, cfg.node, seed, log, device=device)
 
 
 def _print(msg: str) -> None:
@@ -67,7 +71,7 @@ def _train_job(job: TrainJob) -> tuple[dict[str, object], dict[str, Any], TrainR
     kind, data, norm, cfg, seed, threads = job
     torch.set_num_threads(threads)
     res = _train(kind, data, norm, cfg, seed, _print)
-    state = {k: v.detach().cpu().numpy() for k, v in res.model.state_dict().items()}
+    state = {k: v.numpy() for k, v in cpu_state_dict(res.model).items()}
     return res.model.config_dict(), state, TrainResult(
         model=build_model(kind, res.model.config_dict()), train_loss=res.train_loss,
         val_loss=res.val_loss, best_epoch=res.best_epoch, seconds=res.seconds)
@@ -76,15 +80,18 @@ def _train_job(job: TrainJob) -> tuple[dict[str, object], dict[str, Any], TrainR
 def _model_cache_path(cache: Path, kind: str, seed: int, cfg: Config) -> Path:
     """Checkpoint path keyed by everything that determines the trained model."""
     arch = cfg.gru if kind == "gru" else cfg.node
-    key = repr((kind, seed, arch, cfg.seed, cfg.sim, cfg.params, cfg.stimulus,
-                cfg.data.n_train, cfg.data.n_val))
+    parts: tuple[object, ...] = (kind, seed, arch, cfg.seed, cfg.sim, cfg.params, cfg.stimulus,
+                                 cfg.data.n_train, cfg.data.n_val)
+    if resolve_device(cfg.device).type == "cuda":
+        parts += ("cuda",)  # GPU training is numerically different from CPU training
+    key = repr(parts)
     return cache / f"{kind}-seed{seed}-{hashlib.sha1(key.encode()).hexdigest()[:10]}.pt"
 
 
 def _save_result(path: Path, res: TrainResult) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     torch.save({"kind": res.model.kind, "config": res.model.config_dict(),
-                "state_dict": res.model.state_dict(), "train_loss": res.train_loss,
+                "state_dict": cpu_state_dict(res.model), "train_loss": res.train_loss,
                 "val_loss": res.val_loss, "best_epoch": res.best_epoch,
                 "seconds": res.seconds}, path)
 
@@ -106,6 +113,7 @@ def train_many(
     cfg: Config,
     log: Callable[[str], None],
     cache: Path | None = None,
+    job_cfgs: list[Config] | None = None,
 ) -> list[TrainResult]:
     """Train ``(kind, seed)`` jobs, in ``cfg.parallel_jobs`` processes if > 1.
 
@@ -113,11 +121,16 @@ def train_many(
     (candidates, ensemble members) train faster side by side with one or two
     threads each than one after another with all threads. Trained models are
     cached in ``cache`` (if given) and reused by later runs of the same config.
+    ``job_cfgs`` optionally gives each job its own config (e.g. a patch sweep).
+    The returned models live on ``cfg.device``.
     """
+    cfgs = job_cfgs if job_cfgs is not None else [cfg] * len(jobs)
+    if len(cfgs) != len(jobs):
+        raise ValueError("job_cfgs must have one config per job")
     results: dict[int, TrainResult] = {}
     todo: list[int] = []
     for i, (kind, seed) in enumerate(jobs):
-        path = _model_cache_path(cache, kind, seed, cfg) if cache else None
+        path = _model_cache_path(cache, kind, seed, cfgs[i]) if cache else None
         if path is not None and path.exists():
             results[i] = _load_result(path)
             log(f"  loaded cached {KIND_NAME[kind]} (seed {seed}) from {path}")
@@ -127,14 +140,14 @@ def train_many(
     if n_proc <= 1:
         for i in todo:
             kind, seed = jobs[i]
-            results[i] = _train(kind, data, norm, cfg, seed, log)
+            results[i] = _train(kind, data, norm, cfgs[i], seed, log)
     else:
         total = cfg.torch_threads or torch.get_num_threads()
         threads = max(1, total // n_proc)
         sub = {"train": data["train"], "val": data["val"]}
         log(f"  training {len(todo)} models in {n_proc} processes x {threads} threads")
         ctx = multiprocessing.get_context("spawn")
-        args = [(jobs[i][0], sub, norm, cfg, jobs[i][1], threads) for i in todo]
+        args = [(jobs[i][0], sub, norm, cfgs[i], jobs[i][1], threads) for i in todo]
         with ProcessPoolExecutor(max_workers=n_proc, mp_context=ctx) as pool:
             outs = list(pool.map(_train_job, args))
         for i, (_, state, res) in zip(todo, outs, strict=True):
@@ -143,7 +156,10 @@ def train_many(
             results[i] = res
     if cache is not None:
         for i in todo:
-            _save_result(_model_cache_path(cache, *jobs[i], cfg), results[i])
+            _save_result(_model_cache_path(cache, *jobs[i], cfgs[i]), results[i])
+    device = resolve_device(cfg.device)
+    for res in results.values():
+        res.model.to(device).eval()
     return [results[i] for i in range(len(jobs))]
 
 
@@ -184,12 +200,12 @@ def save_twin(path: Path, members: list[Surrogate], norm: Normalizer) -> None:
     path.mkdir(parents=True, exist_ok=True)
     (path / "normalizer.json").write_text(json.dumps(norm.to_dict(), indent=2))
     for k, m in enumerate(members):
-        torch.save({"kind": m.kind, "config": m.config_dict(), "state_dict": m.state_dict()},
+        torch.save({"kind": m.kind, "config": m.config_dict(), "state_dict": cpu_state_dict(m)},
                    path / f"member{k}.pt")
 
 
-def load_twin(path: str | Path) -> Ensemble:
-    """Load an ensemble saved by :func:`save_twin`."""
+def load_twin(path: str | Path, device: str = "cpu") -> Ensemble:
+    """Load an ensemble saved by :func:`save_twin` onto ``device`` ("auto" allowed)."""
     path = Path(path)
     norm = Normalizer(**json.loads((path / "normalizer.json").read_text()))
     members: list[Surrogate] = []
@@ -197,8 +213,7 @@ def load_twin(path: str | Path) -> Ensemble:
         ckpt = torch.load(f, map_location="cpu", weights_only=True)
         m = build_model(ckpt["kind"], ckpt["config"])
         m.load_state_dict(ckpt["state_dict"])
-        m.eval()
-        members.append(m)
+        members.append(m.to(resolve_device(device)).eval())
     return Ensemble(members, norm)
 
 
@@ -226,9 +241,10 @@ def run(
         torch.set_num_threads(cfg.torch_threads)
     torch.manual_seed(cfg.seed)
     dt = cfg.sim.dt_ms
+    device = resolve_device(cfg.device)
 
     # 1. Data ---------------------------------------------------------------
-    log(f"[1/6] simulating datasets ({cfg.name})")
+    log(f"[1/6] simulating datasets ({cfg.name}; networks on {device_label(device)})")
     t0 = time.perf_counter()
     data = build_datasets(cfg, out / "data")
     t_data = time.perf_counter() - t0
@@ -370,7 +386,7 @@ def run(
         "config": asdict(cfg),
         "environment": {"python": platform.python_version(), "torch": torch.__version__,
                         "numpy": np.__version__, "cpu_threads": torch.get_num_threads(),
-                        "machine": platform.machine()},
+                        "machine": platform.machine(), "device": device_label(device)},
         "data_seconds": _r(t_data, 1),
         "lsoda_fallbacks": {k: v.n_fallback for k, v in data.items()},
         "selection": {

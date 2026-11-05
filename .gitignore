@@ -16,4 +16,4 @@ results/*/twin/
 results/*/models/
 results/*/figures/
 # Logs of runs in progress (the final log of a committed run is added explicitly).
-results/*/run.log
+results/*/*.log

@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.axes import Axes
 from matplotlib.figure import Figure
+from matplotlib.ticker import NullFormatter
 from numpy.typing import NDArray
 
 from .hh import PARAM_NAMES
@@ -329,4 +330,44 @@ def plot_failure_modes(
     av.set_xlabel("time (ms)")
     av.set_ylabel("V (mV)")
     av.legend(loc="upper right")
+    _save(fig, path)
+
+
+def plot_patch_sweep(path: Path, result: dict[str, Any]) -> None:
+    """Accuracy and speed-up of the GRU against its time step (patch length)."""
+    _style()
+    rows = result["rows"]
+    x = np.array([r["step_ms"] for r in rows], dtype=np.float64)
+    fig, (a, b) = plt.subplots(1, 2, figsize=(11, 4))
+    for split, label, color in (("val", "validation", GREY),
+                                ("test_id", SPLIT_LABEL["test_id"], ID_C),
+                                ("test_ood_param", SPLIT_LABEL["test_ood_param"], OOD_P_C),
+                                ("test_ood_stim", SPLIT_LABEL["test_ood_stim"], OOD_S_C)):
+        a.plot(x, [r[split]["gamma_mean"] for r in rows], marker="o", color=color, label=label)
+    a.set_xscale("log")
+    a.set_xticks(x, [f"{v:g}" for v in x])
+    a.xaxis.set_minor_formatter(NullFormatter())
+    a.set_xlabel("GRU time step = patch length (ms)")
+    a.set_ylabel(r"mean coincidence factor $\Gamma$")
+    a.set_title("Accuracy vs time step")
+    a.legend(loc="center right")
+    keys = list(rows[0]["speedup_vs_scipy"])
+    palette = {"cpu": TWIN_C, "cuda": NODE_C}
+    styles = ["-", "--", ":", "-."]
+    for k in keys:
+        dev, bs = k.split("_b")
+        same_dev = [kk for kk in keys if kk.startswith(dev)]
+        b.plot(x, [r["speedup_vs_scipy"][k] for r in rows], marker="o", color=palette[dev],
+               ls=styles[same_dev.index(k) % len(styles)],
+               label=f"{'GPU' if dev == 'cuda' else 'CPU'}, batch {int(bs):,}")
+    b.set_xscale("log")
+    b.set_yscale("log")
+    b.set_xticks(x, [f"{v:g}" for v in x])
+    b.xaxis.set_minor_formatter(NullFormatter())
+    b.set_xlabel("GRU time step = patch length (ms)")
+    b.set_ylabel("speed-up vs scipy LSODA (single model)")
+    gpu = result.get("gpu")
+    b.set_title("Inference speed vs time step" + (f"\n(GPU: {gpu})" if gpu else " (CPU only)"))
+    b.legend(loc="upper left")
+    fig.tight_layout()
     _save(fig, path)

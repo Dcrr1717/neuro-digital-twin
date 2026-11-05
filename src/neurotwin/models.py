@@ -3,7 +3,7 @@
 Two families are implemented and compared head-to-head (see docs/RESULTS.md):
 
 * :class:`GRUSurrogate` -- a discrete-time sequence model. A 2-layer GRU reads
-  the stimulus in *patches* of ``patch`` samples (0.5 ms by default) together
+  the stimulus in *patches* of ``patch`` samples (1 ms by default) together
   with the parameters and emits the voltage of the whole patch per step. It
   learns the flow map over a step much longer than the stiff HH time scales.
 * :class:`NeuralODESurrogate` -- a neural ODE ``dx/dt = f_phi(x, I, theta)`` in
@@ -106,7 +106,7 @@ class GRUSurrogate(Surrogate):
     kind = "gru"
 
     def __init__(
-        self, n_params: int = 4, hidden: int = 64, layers: int = 2, patch: int = 5
+        self, n_params: int = 4, hidden: int = 64, layers: int = 2, patch: int = 10
     ) -> None:
         super().__init__()
         self.n_params, self.hidden, self.layers, self.patch = n_params, hidden, layers, patch
@@ -238,9 +238,12 @@ def predict_mv(
 ) -> FloatArray:
     """Run one surrogate on raw inputs; returns voltage in mV, shape ``(B, N)``."""
     model.eval()
+    dev = model_device(model)
     th, cur = norm.theta(theta), norm.current(current)
+    # Copying the result back to host memory also synchronises a GPU, so
+    # timings of this function include the full device round trip.
     outs = [
-        norm.voltage_to_mv(model(th[i : i + batch_size], cur[i : i + batch_size]))
+        norm.voltage_to_mv(model(th[i : i + batch_size].to(dev), cur[i : i + batch_size].to(dev)))
         for i in range(0, th.shape[0], batch_size)
     ]
     return np.concatenate(outs, axis=0)
@@ -248,3 +251,43 @@ def predict_mv(
 
 def count_parameters(model: nn.Module) -> int:
     return sum(p.numel() for p in model.parameters())
+
+
+def resolve_device(name: str = "auto") -> torch.device:
+    """``"auto"`` -> CUDA if available, else CPU; ``"cpu"``, ``"cuda"``, ``"cuda:1"``..."""
+    if name == "auto":
+        return torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    dev = torch.device(name)
+    if dev.type == "cuda" and not torch.cuda.is_available():
+        raise RuntimeError(f"device {name!r} requested but PyTorch sees no CUDA device")
+    if dev.type not in ("cpu", "cuda"):
+        raise ValueError(f"unsupported device {name!r}")
+    return dev
+
+
+def device_label(device: torch.device) -> str:
+    """Human-readable device name, e.g. ``cpu`` or ``cuda (NVIDIA A100)``."""
+    if device.type == "cuda":
+        return f"cuda ({torch.cuda.get_device_name(device)})"
+    return "cpu"
+
+
+def model_device(model: nn.Module) -> torch.device:
+    return next(model.parameters()).device
+
+
+def on_device(model: Surrogate, device: torch.device | str) -> Surrogate:
+    """``model`` itself if it already lives on ``device``, else a moved copy."""
+    device = torch.device(device)
+    current = model_device(model)
+    # A bare "cuda" means the current CUDA device, whatever its index.
+    if current == device or (str(device) == "cuda" and current.type == "cuda"):
+        return model
+    clone = build_model(model.kind, model.config_dict())
+    clone.load_state_dict(model.state_dict())
+    return clone.to(device).eval()
+
+
+def cpu_state_dict(model: nn.Module) -> dict[str, Tensor]:
+    """State dict with every tensor on the CPU (portable checkpoints)."""
+    return {k: v.detach().cpu() for k, v in model.state_dict().items()}

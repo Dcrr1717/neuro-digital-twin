@@ -31,8 +31,11 @@ class TrainResult:
     seconds: float = 0.0
 
 
-def _tensors(ds: Dataset, norm: Normalizer) -> tuple[Tensor, Tensor, Tensor]:
-    return norm.theta(ds.theta), norm.current(ds.current), norm.state(ds.states)[:, :, 0]
+def _tensors(
+    ds: Dataset, norm: Normalizer, device: torch.device
+) -> tuple[Tensor, Tensor, Tensor]:
+    return (norm.theta(ds.theta).to(device), norm.current(ds.current).to(device),
+            norm.state(ds.states)[:, :, 0].to(device))
 
 
 @torch.no_grad()
@@ -52,14 +55,16 @@ def train_gru(
     cfg: GRUConfig,
     seed: int,
     log: Logger = _silent,
+    device: torch.device | str = "cpu",
 ) -> TrainResult:
     """Train a :class:`GRUSurrogate` end-to-end on full traces (MSE on V)."""
+    device = torch.device(device)
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
     model = GRUSurrogate(n_params=train.theta.shape[1], hidden=cfg.hidden, layers=cfg.layers,
-                         patch=cfg.patch)
-    th, cur, v = _tensors(train, norm)
-    vth, vcur, vv = _tensors(val, norm)
+                         patch=cfg.patch).to(device)
+    th, cur, v = _tensors(train, norm, device)
+    vth, vcur, vv = _tensors(val, norm, device)
     n = th.shape[0]
     steps_per_epoch = max(1, (n + cfg.batch_size - 1) // cfg.batch_size)
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
@@ -75,7 +80,7 @@ def train_gru(
         perm = torch.randperm(n, generator=gen)
         running = 0.0
         for s in range(steps_per_epoch):
-            idx = perm[s * cfg.batch_size : (s + 1) * cfg.batch_size]
+            idx = perm[s * cfg.batch_size : (s + 1) * cfg.batch_size].to(device)
             pred = model(th[idx], cur[idx])
             loss = torch.mean((pred - v[idx]) ** 2)
             opt.zero_grad(set_to_none=True)
@@ -119,6 +124,7 @@ def train_node(
     seed: int,
     log: Logger = _silent,
     n_val_rollout: int = 64,
+    device: torch.device | str = "cpu",
 ) -> TrainResult:
     """Train a :class:`NeuralODESurrogate` by multiple shooting on (V, m, h, n).
 
@@ -129,17 +135,20 @@ def train_node(
     """
     torch.manual_seed(seed)
     gen = torch.Generator().manual_seed(seed)
+    device = torch.device(device)
     model = NeuralODESurrogate(
         n_params=train.theta.shape[1], width=cfg.width, depth=cfg.depth, dt=train.dt,
         substeps=cfg.substeps, deriv_scale=node_deriv_scale(train, norm),
-    )
-    th = norm.theta(train.theta)
-    cur = norm.current(train.current)
-    full = torch.cat([norm.state(train.x0[:, None, :]), norm.state(train.states)], dim=1)
+    ).to(device)
+    th = norm.theta(train.theta).to(device)
+    cur = norm.current(train.current).to(device)
+    full = torch.cat([norm.state(train.x0[:, None, :]), norm.state(train.states)],
+                     dim=1).to(device)
     n_traces, n_steps = cur.shape
     sub = slice(0, min(n_val_rollout, len(val)))
-    vth, vcur = norm.theta(val.theta[sub]), norm.current(val.current[sub])
-    vv = norm.state(val.states[sub])[:, :, 0]
+    vth = norm.theta(val.theta[sub]).to(device)
+    vcur = norm.current(val.current[sub]).to(device)
+    vv = norm.state(val.states[sub])[:, :, 0].to(device)
 
     opt = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=1e-6)
     total = cfg.epochs * cfg.iters_per_epoch
@@ -154,9 +163,11 @@ def train_node(
         k_win = min(schedule[epoch], n_steps)
         running, n_ok = 0.0, 0
         for _ in range(cfg.iters_per_epoch):
-            b = torch.randint(0, n_traces, (cfg.batch_size,), generator=gen)
-            j = torch.randint(0, n_steps - k_win + 1, (cfg.batch_size,), generator=gen)
-            offs = j[:, None] + torch.arange(k_win)[None, :]
+            # Indices are drawn on the CPU generator (reproducible on any device).
+            b = torch.randint(0, n_traces, (cfg.batch_size,), generator=gen).to(device)
+            j = torch.randint(0, n_steps - k_win + 1, (cfg.batch_size,),
+                              generator=gen).to(device)
+            offs = j[:, None] + torch.arange(k_win, device=device)[None, :]
             x = full[b, j]
             target = full[b[:, None], offs + 1]
             i_win = cur[b[:, None], offs]
